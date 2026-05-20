@@ -29,8 +29,8 @@ LavaPanel is an open-source server management panel inspired by Pterodactyl Pane
 ## 🛣️ Roadmap
 
 ### Phase 1: Core Panel
-- [ ] Basic panel UI with lava theme
-- [ ] User authentication system
+- [x] Basic panel UI with lava theme
+- [x] User authentication system
 - [ ] Server deployment engine
 - [ ] Discord bot deployment templates
 - [ ] Minecraft server deployment templates
@@ -65,11 +65,11 @@ The panel features a **lava-inspired design** with:
 
 ```
 LavaPanel/
-├── panel/           # Main panel UI
-├── deployer/        # Server deployment engine
-├── integrations/    # Discord, Telegram bots
-├── themes/          # Theme library
-└── docs/            # Documentation
+├── panel/ # Main panel UI
+├── deployer/ # Server deployment engine
+├── integrations/ # Discord, Telegram bots
+├── themes/ # Theme library
+└── docs/ # Documentation
 ```
 
 ## 🤝 Contributing
