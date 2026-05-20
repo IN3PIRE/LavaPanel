@@ -3,504 +3,449 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lava Panel - Discord Bot Deployment</title>
+    <title>Lava Panel - Server Configuration</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Courier New', monospace;
         }
 
         body {
-            background: linear-gradient(135deg, #1a0a0a 0%, #2d1f1f 50%, #1a0a0a 100%);
+            background: #1e1e1e;
             min-height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            flex-direction: column;
         }
 
-        .config-container {
-            background: linear-gradient(145deg, #2a1a1a 0%, #1f0f0f 100%);
-            border: 2px solid #5865F2;
-            border-radius: 15px;
-            padding: 40px;
-            width: 100%;
-            max-width: 650px;
-            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.3),
-                        inset 0 0 60px rgba(88, 101, 242, 0.1);
-            position: relative;
+        .navbar {
+            background: #2d2d2d;
+            padding: 15px 30px;
+            border-bottom: 2px solid #5865F2;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .navbar h1 {
+            color: #5865F2;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .navbar .subtitle {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        .config-section {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 6px;
+            margin-bottom: 30px;
             overflow: hidden;
         }
 
-        .config-container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(88, 101, 242, 0.1) 0%, transparent 70%);
-            animation: discord-glow 8s ease-in-out infinite;
-            pointer-events: none;
+        .config-header {
+            background: #2d2d2d;
+            padding: 12px 20px;
+            border-left: 3px solid #5865F2;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        @keyframes discord-glow {
-            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
-            50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 35px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .header h1 {
-            color: #5865F2;
-            font-size: 2rem;
-            font-weight: 700;
-            text-shadow: 0 0 20px rgba(88, 101, 242, 0.5);
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            color: #99aab5;
+        .config-header h2 {
+            color: #fff;
             font-size: 1rem;
+            font-weight: 600;
         }
 
-        .config-form {
-            position: relative;
-            z-index: 1;
+        .config-body {
+            padding: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
         }
 
         .form-group label {
-            display: block;
-            color: #ffffff;
+            color: #aaa;
+            font-size: 0.85rem;
             font-weight: 600;
             margin-bottom: 8px;
-            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .form-group input[type="text"],
-        .form-group input[type="password"],
-        .form-group input[type="number"],
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            background: rgba(0, 0, 0, 0.4);
-            border: 2px solid #5865F2;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 1rem;
-            transition: all 0.3s ease;
+        .form-group input,
+        .form-group select {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px 12px;
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s ease;
         }
 
         .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
+        .form-group select:focus {
             outline: none;
-            border-color: #7289da;
-            box-shadow: 0 0 15px rgba(88, 101, 242, 0.4);
+            border-color: #5865F2;
+            box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
         }
 
         .form-group select {
             cursor: pointer;
         }
 
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
         .form-hint {
-            color: #99aab5;
-            font-size: 0.85rem;
+            color: #666;
+            font-size: 0.8rem;
             margin-top: 6px;
+            font-style: italic;
         }
 
-        /* File Upload Styling */
-        .file-upload-group {
-            margin-bottom: 25px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 2px dashed #5865F2;
-            border-radius: 10px;
-            position: relative;
-            z-index: 1;
+        .file-upload-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
         }
 
-        .file-upload-group label {
-            color: #ffffff;
-            font-weight: 600;
-            margin-bottom: 12px;
-            display: block;
+        .file-upload-area {
+            border: 2px dashed #444;
+            border-radius: 6px;
+            padding: 30px;
+            text-align: center;
+            background: #1a1a1a;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .file-upload-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
+        .file-upload-area:hover {
+            border-color: #5865F2;
+            background: #1f1f1f;
+        }
+
+        .file-upload-area i {
+            font-size: 2rem;
+            color: #5865F2;
+            margin-bottom: 10px;
+        }
+
+        .file-upload-area p {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .file-upload-area small {
+            color: #666;
+            font-size: 0.8rem;
         }
 
         .file-upload-input {
-            flex: 1;
-            position: relative;
-        }
-
-        .file-upload-input input[type="file"] {
-            width: 100%;
-            padding: 10px 15px;
-            background: rgba(0, 0, 0, 0.4);
-            border: 2px solid #5865F2;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 0.95rem;
-            cursor: pointer;
-        }
-
-        .file-upload-input input[type="file"]::-webkit-file-upload-button {
-            background: linear-gradient(135deg, #5865F2 0%, #7289da 100%);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-
-        .file-upload-input input[type="file"]::-webkit-file-upload-button:hover {
-            background: linear-gradient(135deg, #7289da 0%, #5865F2 100%);
+            display: none;
         }
 
         .file-list {
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            max-height: 200px;
-            overflow-y: auto;
+            margin-top: 20px;
         }
 
         .file-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 12px;
-            background: rgba(88, 101, 242, 0.1);
-            border-radius: 6px;
+            padding: 10px 15px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
             margin-bottom: 8px;
-            border-left: 3px solid #5865F2;
+            font-family: 'Courier New', monospace;
         }
 
-        .file-item:last-child {
-            margin-bottom: 0;
+        .file-item .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .file-item .file-name {
-            color: #ffffff;
-            font-size: 0.9rem;
-            flex: 1;
-        }
-
-        .file-item .file-size {
-            color: #99aab5;
-            font-size: 0.85rem;
-            margin: 0 10px;
-        }
-
-        .file-item .remove-file {
-            background: none;
-            border: none;
-            color: #ff6b6b;
-            cursor: pointer;
-            font-size: 1.2rem;
-            padding: 0 5px;
-            transition: color 0.3s ease;
-        }
-
-        .file-item .remove-file:hover {
-            color: #ff4757;
-        }
-
-        .empty-files {
-            color: #99aab5;
-            text-align: center;
-            font-size: 0.9rem;
-            padding: 10px;
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #5865F2 0%, #7289da 100%);
-            border: none;
-            border-radius: 10px;
-            color: #ffffff;
-            font-size: 1.1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
-        }
-
-        .submit-btn:hover {
-            background: linear-gradient(135deg, #7289da 0%, #5865F2 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(88, 101, 242, 0.6);
-        }
-
-        .submit-btn:active {
-            transform: translateY(0);
-        }
-
-        .back-link {
-            text-align: center;
-            margin-top: 25px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .back-link a {
-            color: #99aab5;
-            text-decoration: none;
-            font-size: 0.95rem;
-            transition: color 0.3s ease;
-        }
-
-        .back-link a:hover {
+        .file-item .file-icon {
             color: #5865F2;
         }
 
-        /* Lava particle animation */
-        .lava-particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: #5865F2;
-            border-radius: 50%;
-            animation: rise 4s infinite ease-in;
-            opacity: 0;
+        .file-item .file-name {
+            color: #fff;
+            font-size: 0.9rem;
         }
 
-        @keyframes rise {
-            0% {
-                transform: translateY(100vh) scale(0);
-                opacity: 0;
-            }
-            50% {
-                opacity: 0.8;
-            }
-            100% {
-                transform: translateY(-100vh) scale(1);
-                opacity: 0;
-            }
+        .file-item .file-size {
+            color: #666;
+            font-size: 0.85rem;
+            margin-left: 10px;
+        }
+
+        .file-item .remove-btn {
+            background: none;
+            border: none;
+            color: #ff4757;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            transition: color 0.2s ease;
+        }
+
+        .file-item .remove-btn:hover {
+            color: #ff6b7a;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn-primary {
+            background: #5865F2;
+            color: #fff;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #4752c4;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        .status-bar {
+            background: #2d2d2d;
+            padding: 15px 30px;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-info {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            margin-right: 8px;
         }
     </style>
 </head>
 <body>
-    <div class="config-container">
-        <div class="header">
-            <h1>🤖 Discord Bot Configuration</h1>
-            <p>Lava Panel Deployment Engine</p>
-        </div>
+    <div class="navbar">
+        <h1>🔥 Lava Panel</h1>
+        <span class="subtitle">Server Configuration</span>
+    </div>
 
-        <form class="config-form">
-            <div class="form-group">
-                <label for="botName">Bot Name</label>
-                <input type="text" id="botName" name="botName" placeholder="My Awesome Bot" required>
-            </div>
+    <div class="container">
+        <form id="configForm">
+            <!-- Startup Configuration -->
+            <div class="config-section">
+                <div class="config-header">
+                    <h2>⚙️ Startup Configuration</h2>
+                </div>
+                <div class="config-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nodeVersion">Node.js Version</label>
+                            <select id="nodeVersion" name="nodeVersion" required>
+                                <option value="20">Node.js 20.x (Latest LTS)</option>
+                                <option value="18">Node.js 18.x (LTS)</option>
+                                <option value="16">Node.js 16.x (LTS)</option>
+                                <option value="14">Node.js 14.x (Legacy)</option>
+                            </select>
+                            <div class="form-hint">Runtime version for your application</div>
+                        </div>
 
-            <div class="form-group">
-                <label for="botToken">Bot Token</label>
-                <input type="password" id="botToken" name="botToken" placeholder="Your Discord Bot Token" required>
-                <div class="form-hint">Get this from Discord Developer Portal</div>
-            </div>
+                        <div class="form-group">
+                            <label for="mainFile">Startup File</label>
+                            <input type="text" id="mainFile" name="mainFile" value="./index.js" placeholder="./index.js" required>
+                            <div class="form-hint">Entry point (e.g., ./index.js, ./src/app.js)</div>
+                        </div>
+                    </div>
 
-            <div class="form-group">
-                <label for="nodeVersion">Node.js Version</label>
-                <select id="nodeVersion" name="nodeVersion" required>
-                    <option value="20">Node.js 20.x (Latest LTS) - Recommended</option>
-                    <option value="18">Node.js 18.x (LTS)</option>
-                    <option value="16">Node.js 16.x (LTS)</option>
-                    <option value="14">Node.js 14.x (Legacy)</option>
-                </select>
-                <div class="form-hint">Select the Node.js version your bot requires</div>
-            </div>
+                    <!-- File Upload Section -->
+                    <div class="file-upload-section">
+                        <div class="form-group">
+                            <label>Source Files</label>
+                            <div class="file-upload-area" id="uploadArea">
+                                <i>📁</i>
+                                <p>Drag & drop files here or click to browse</p>
+                                <small>Supported: .js, .ts, .json, .env, .md</small>
+                            </div>
+                            <input type="file" id="fileInput" class="file-upload-input" multiple accept=".js,.ts,.json,.env,.md,.txt">
+                        </div>
 
-            <div class="form-group">
-                <label for="mainFile">Main File Directory</label>
-                <input type="text" id="mainFile" name="mainFile" value="./index.js" placeholder="./index.js" required>
-                <div class="form-hint">Entry point file (e.g., ./index.js, ./src/bot.js, ./app.js)</div>
-            </div>
-
-            <div class="file-upload-group">
-                <label>📁 Upload Bot Files (Optional)</label>
-                <div class="form-hint" style="margin-bottom: 15px;">Upload your bot files (.js, .json, .env template, etc.)</div>
-                
-                <div class="file-upload-wrapper">
-                    <div class="file-upload-input">
-                        <input type="file" id="fileInput" name="files" multiple accept=".js,.json,.env,.txt,.md,.ts,.py">
+                        <div class="file-list" id="fileList"></div>
                     </div>
                 </div>
+            </div>
 
-                <div class="file-list" id="fileList">
-                    <div class="empty-files">No files uploaded yet</div>
+            <!-- Environment Variables -->
+            <div class="config-section">
+                <div class="config-header">
+                    <h2>🔐 Environment Variables</h2>
+                </div>
+                <div class="config-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="envFile">Environment File (.env)</label>
+                            <input type="file" id="envFile" name="envFile" accept=".env">
+                            <div class="form-hint">Upload or configure environment variables</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="botPrefix">Command Prefix</label>
-                <input type="text" id="botPrefix" name="botPrefix" value="!" placeholder="!" maxlength="3">
-                <div class="form-hint">Default: ! (e.g., !help, !play)</div>
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="button" class="btn btn-secondary" onclick="window.location.href='deploy.html'">← Back</button>
+                <button type="submit" class="btn btn-primary">🚀 Deploy Server</button>
             </div>
-
-            <div class="form-group">
-                <label for="botFeatures">Features</label>
-                <select id="botFeatures" name="botFeatures" multiple>
-                    <option value="music">🎵 Music Player</option>
-                    <option value="moderation">🛡️ Moderation</option>
-                    <option value="welcome">👋 Welcome Messages</option>
-                    <option value="leveling">📊 Leveling System</option>
-                    <option value="economy">💰 Economy</option>
-                    <option value="fun">🎮 Fun Commands</option>
-                    <option value="logging">📝 Logging</option>
-                    <option value="custom">⚙️ Custom Commands</option>
-                </select>
-                <div class="form-hint">Hold Ctrl/Cmd to select multiple</div>
-            </div>
-
-            <div class="form-group">
-                <label for="serverSize">Expected Server Size</label>
-                <select id="serverSize" name="serverSize">
-                    <option value="small">Small (1-100 members)</option>
-                    <option value="medium" selected>Medium (100-1000 members)</option>
-                    <option value="large">Large (1000-10000 members)</option>
-                    <option value="xlarge">Extra Large (10000+ members)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="additionalConfig">Additional Configuration (JSON)</label>
-                <textarea id="additionalConfig" name="additionalConfig" placeholder='{"customSetting": "value"}'></textarea>
-                <div class="form-hint">Optional advanced configuration</div>
-            </div>
-
-            <button type="submit" class="submit-btn">🚀 Deploy Bot</button>
         </form>
+    </div>
 
-        <div class="back-link">
-            <a href="deploy.html">← Back to Selection</a>
+    <div class="status-bar">
+        <div class="status-info">
+            <span class="status-indicator"></span>
+            Ready to deploy
+        </div>
+        <div class="status-info">
+            Lava Panel v1.0.0
         </div>
     </div>
 
     <script>
-        // Create lava particles
-        function createParticle() {
-            const particle = document.createElement('div');
-            particle.className = 'lava-particle';
-            particle.style.left = Math.random() * 100 + '%';
-            particle.style.animationDuration = (Math.random() * 2 + 3) + 's';
-            document.body.appendChild(particle);
-
-            setTimeout(() => {
-                particle.remove();
-            }, 4000);
-        }
-
-        setInterval(createParticle, 200);
-
-        // File upload handling
-        const fileInput = document.getElementById('fileInput');
-        const fileList = document.getElementById('fileList');
         let uploadedFiles = [];
 
-        fileInput.addEventListener('change', function(e) {
-            const files = Array.from(e.target.files);
-            
-            if (files.length > 0) {
-                // Clear empty message if exists
-                const emptyMsg = fileList.querySelector('.empty-files');
-                if (emptyMsg) {
-                    fileList.innerHTML = '';
-                }
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
 
-                files.forEach(file => {
-                    uploadedFiles.push(file);
-                    
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'file-item';
-                    fileItem.innerHTML = `
-                        <span class="file-name">📄 ${file.name}</span>
-                        <span class="file-size">${formatFileSize(file.size)}</span>
-                        <button class="remove-file" onclick="removeFile('${file.name}')">&times;</button>
-                    `;
-                    fileList.appendChild(fileItem);
-                });
-            }
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(Array.from(e.target.files));
         });
 
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#5865F2';
+            uploadArea.style.background = '#1f1f1f';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#444';
+            uploadArea.style.background = '#1a1a1a';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#444';
+            uploadArea.style.background = '#1a1a1a';
+            handleFiles(Array.from(e.dataTransfer.files));
+        });
+
+        function handleFiles(files) {
+            files.forEach(file => {
+                uploadedFiles.push(file);
+                renderFileList();
+            });
+        }
+
+        function renderFileList() {
+            fileList.innerHTML = '';
+            uploadedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <span class="file-icon">📄</span>
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatSize(file.size)}</span>
+                    </div>
+                    <button type="button" class="remove-btn" onclick="removeFile(${index})">&times;</button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            renderFileList();
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
             const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const sizes = ['B', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
         }
 
-        function removeFile(filename) {
-            uploadedFiles = uploadedFiles.filter(file => file.name !== filename);
-            const fileItems = fileList.querySelectorAll('.file-item');
-            fileItems.forEach(item => {
-                if (item.querySelector('.file-name').textContent.includes(filename)) {
-                    item.remove();
-                }
-            });
-
-            // Show empty message if no files
-            if (uploadedFiles.length === 0) {
-                fileList.innerHTML = '<div class="empty-files">No files uploaded yet</div>';
-            }
-        }
-
         // Form submission
-        document.querySelector('.config-form').addEventListener('submit', function(e) {
+        document.getElementById('configForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const formData = new FormData(this);
             const config = {
-                botName: formData.get('botName'),
-                botToken: formData.get('botToken'),
-                nodeVersion: formData.get('nodeVersion'),
-                mainFile: formData.get('mainFile'),
-                files: uploadedFiles.map(f => f.name),
-                botPrefix: formData.get('botPrefix') || '!',
-                botFeatures: Array.from(formData.getAll('botFeatures')),
-                serverSize: formData.get('serverSize'),
-                additionalConfig: formData.get('additionalConfig')
+                nodeVersion: document.getElementById('nodeVersion').value,
+                mainFile: document.getElementById('mainFile').value,
+                files: uploadedFiles.map(f => f.name)
             };
 
-            // Simulate deployment
-            const submitBtn = this.querySelector('.submit-btn');
-            submitBtn.textContent = '⏳ Deploying...';
-            submitBtn.disabled = true;
+            const btn = this.querySelector('.btn-primary');
+            btn.textContent = '⏳ Deploying...';
+            btn.disabled = true;
 
             setTimeout(() => {
-                alert(`🔥 Bot deployment initiated!\n\n📦 Files to upload: ${uploadedFiles.length}\n📁 Main file: ${config.mainFile}\n🟢 Node.js: v${config.nodeVersion}.x\n\nCheck your dashboard for status.`);
-                submitBtn.textContent = '✅ Deployed!';
-                setTimeout(() => {
-                    submitBtn.textContent = '🚀 Deploy Bot';
-                    submitBtn.disabled = false;
-                }, 2000);
+                alert(`✅ Server Deployed!\n\nNode.js: v${config.nodeVersion}.x\nStartup: ${config.mainFile}\nFiles: ${uploadedFiles.length}`);
+                btn.textContent = '✅ Deployed';
             }, 2000);
         });
     </script>
