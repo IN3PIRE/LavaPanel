@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lava Panel - Discord Bot Deployment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a0a0a 0%, #2d1f1f 50%, #1a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .config-container {
+            background: linear-gradient(145deg, #2a1a1a 0%, #1f0f0f 100%);
+            border: 2px solid #5865F2;
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.3),
+                        inset 0 0 60px rgba(88, 101, 242, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .config-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(88, 101, 242, 0.1) 0%, transparent 70%);
+            animation: discord-glow 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes discord-glow {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            color: #5865F2;
+            font-size: 2rem;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(88, 101, 242, 0.5);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #99aab5;
+            font-size: 1rem;
+        }
+
+        .config-form {
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid #5865F2;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #7289da;
+            box-shadow: 0 0 15px rgba(88, 101, 242, 0.4);
+        }
+
+        .form-group select {
+            cursor: pointer;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-hint {
+            color: #99aab5;
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #5865F2 0%, #7289da 100%);
+            border: none;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
+        }
+
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #7289da 0%, #5865F2 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(88, 101, 242, 0.6);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 25px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-link a {
+            color: #99aab5;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link a:hover {
+            color: #5865F2;
+        }
+
+        /* Lava particle animation */
+        .lava-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #5865F2;
+            border-radius: 50%;
+            animation: rise 4s infinite ease-in;
+            opacity: 0;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="config-container">
+        <div class="header">
+            <h1>🤖 Discord Bot Configuration</h1>
+            <p>Lava Panel Deployment Engine</p>
+        </div>
+
+        <form class="config-form">
+            <div class="form-group">
+                <label for="botName">Bot Name</label>
+                <input type="text" id="botName" name="botName" placeholder="My Awesome Bot" required>
+            </div>
+
+            <div class="form-group">
+                <label for="botToken">Bot Token</label>
+                <input type="password" id="botToken" name="botToken" placeholder="Your Discord Bot Token" required>
+                <div class="form-hint">Get this from Discord Developer Portal</div>
+            </div>
+
+            <div class="form-group">
+                <label for="botPrefix">Command Prefix</label>
+                <input type="text" id="botPrefix" name="botPrefix" value="!" placeholder="!" maxlength="3">
+                <div class="form-hint">Default: ! (e.g., !help, !play)</div>
+            </div>
+
+            <div class="form-group">
+                <label for="botFeatures">Features</label>
+                <select id="botFeatures" name="botFeatures" multiple>
+                    <option value="music">🎵 Music Player</option>
+                    <option value="moderation">🛡️ Moderation</option>
+                    <option value="welcome">👋 Welcome Messages</option>
+                    <option value="leveling">📊 Leveling System</option>
+                    <option value="economy">💰 Economy</option>
+                    <option value="fun">🎮 Fun Commands</option>
+                    <option value="logging">📝 Logging</option>
+                    <option value="custom">⚙️ Custom Commands</option>
+                </select>
+                <div class="form-hint">Hold Ctrl/Cmd to select multiple</div>
+            </div>
+
+            <div class="form-group">
+                <label for="serverSize">Expected Server Size</label>
+                <select id="serverSize" name="serverSize">
+                    <option value="small">Small (1-100 members)</option>
+                    <option value="medium" selected>Medium (100-1000 members)</option>
+                    <option value="large">Large (1000-10000 members)</option>
+                    <option value="xlarge">Extra Large (10000+ members)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="additionalConfig">Additional Configuration (JSON)</label>
+                <textarea id="additionalConfig" name="additionalConfig" placeholder='{"customSetting": "value"}'></textarea>
+                <div class="form-hint">Optional advanced configuration</div>
+            </div>
+
+            <button type="submit" class="submit-btn">🚀 Deploy Bot</button>
+        </form>
+
+        <div class="back-link">
+            <a href="deploy.html">← Back to Selection</a>
+        </div>
+    </div>
+
+    <script>
+        // Create lava particles
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'lava-particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (Math.random() * 2 + 3) + 's';
+            document.body.appendChild(particle);
+
+            setTimeout(() => {
+                particle.remove();
+            }, 4000);
+        }
+
+        setInterval(createParticle, 200);
+
+        // Form submission
+        document.querySelector('.config-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const config = {
+                botName: formData.get('botName'),
+                botToken: formData.get('botToken'),
+                botPrefix: formData.get('botPrefix') || '!',
+                botFeatures: Array.from(formData.getAll('botFeatures')),
+                serverSize: formData.get('serverSize'),
+                additionalConfig: formData.get('additionalConfig')
+            };
+
+            // Simulate deployment
+            const submitBtn = this.querySelector('.submit-btn');
+            submitBtn.textContent = '⏳ Deploying...';
+            submitBtn.disabled = true;
+
+            setTimeout(() => {
+                alert('🔥 Bot deployment initiated! Check your dashboard for status.');
+                submitBtn.textContent = '✅ Deployed!';
+                setTimeout(() => {
+                    submitBtn.textContent = '🚀 Deploy Bot';
+                    submitBtn.disabled = false;
+                }, 2000);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
