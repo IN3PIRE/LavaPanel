@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lava Panel - Minecraft Server Deployment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a0a0a 0%, #2d1f1f 50%, #1a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .config-container {
+            background: linear-gradient(145deg, #2a1a1a 0%, #1f0f0f 100%);
+            border: 2px solid #4CAF50;
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 8px 32px rgba(76, 175, 80, 0.3),
+                        inset 0 0 60px rgba(76, 175, 80, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .config-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(76, 175, 80, 0.1) 0%, transparent 70%);
+            animation: minecraft-glow 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes minecraft-glow {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            color: #4CAF50;
+            font-size: 2rem;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #81C784;
+            font-size: 1rem;
+        }
+
+        .config-form {
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #66BB6A;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .form-group select {
+            cursor: pointer;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-hint {
+            color: #81C784;
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffffff;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #4CAF50;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+            border: none;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 25px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-link a {
+            color: #81C784;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link a:hover {
+            color: #4CAF50;
+        }
+
+        /* Lava particle animation */
+        .lava-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: rise 4s infinite ease-in;
+            opacity: 0;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="config-container">
+        <div class="header">
+            <h1>⛏️ Minecraft Server Configuration</h1>
+            <p>Lava Panel Deployment Engine</p>
+        </div>
+
+        <form class="config-form">
+            <div class="form-group">
+                <label for="serverName">Server Name</label>
+                <input type="text" id="serverName" name="serverName" placeholder="My Awesome Server" required>
+            </div>
+
+            <div class="form-group">
+                <label for="serverVersion">Minecraft Version</label>
+                <select id="serverVersion" name="serverVersion" required>
+                    <option value="1.20.4">1.20.4 (Latest)</option>
+                    <option value="1.20.1">1.20.1</option>
+                    <option value="1.19.4">1.19.4</option>
+                    <option value="1.18.2">1.18.2</option>
+                    <option value="1.16.5">1.16.5</option>
+                    <option value="1.12.2">1.12.2</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="serverType">Server Type</label>
+                <select id="serverType" name="serverType" required>
+                    <option value="vanilla">Vanilla</option>
+                    <option value="spigot">Spigot</option>
+                    <option value="paper">Paper (Recommended)</option>
+                    <option value="fabric">Fabric</option>
+                    <option value="forge">Forge</option>
+                </select>
+                <div class="form-hint">Paper offers best performance for most servers</div>
+            </div>
+
+            <div class="form-group">
+                <label for="maxPlayers">Max Players</label>
+                <input type="number" id="maxPlayers" name="maxPlayers" value="20" min="1" max="1000" required>
+                <div class="form-hint">Adjust based on your hosting plan</div>
+            </div>
+
+            <div class="form-group">
+                <label for="difficulty">Difficulty</label>
+                <select id="difficulty" name="difficulty">
+                    <option value="peaceful">Peaceful</option>
+                    <option value="easy">Easy</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="gameMode">Default Game Mode</label>
+                <select id="gameMode" name="gameMode">
+                    <option value="survival" selected>Survival</option>
+                    <option value="creative">Creative</option>
+                    <option value="adventure">Adventure</option>
+                    <option value="spectator">Spectator</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Server Settings</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="pvp" name="settings" value="pvp" checked>
+                        <label for="pvp">Enable PvP</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="commandBlocks" name="settings" value="commandBlocks" checked>
+                        <label for="commandBlocks">Enable Command Blocks</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="whitelist" name="settings" value="whitelist">
+                        <label for="whitelist">Whitelist Only</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="onlineMode" name="settings" value="onlineMode" checked>
+                        <label for="onlineMode">Online Mode (Premium Only)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="motd">MOTD (Message of the Day)</label>
+                <textarea id="motd" name="motd" placeholder="Welcome to my awesome Minecraft server!">Welcome to my Minecraft Server!</textarea>
+                <div class="form-hint">Displayed in server list</div>
+            </div>
+
+            <div class="form-group">
+                <label for="seed">World Seed (Optional)</label>
+                <input type="text" id="seed" name="seed" placeholder="Leave empty for random seed">
+            </div>
+
+            <button type="submit" class="submit-btn">🚀 Deploy Server</button>
+        </form>
+
+        <div class="back-link">
+            <a href="deploy.html">← Back to Selection</a>
+        </div>
+    </div>
+
+    <script>
+        // Create lava particles
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'lava-particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (Math.random() * 2 + 3) + 's';
+            document.body.appendChild(particle);
+
+            setTimeout(() => {
+                particle.remove();
+            }, 4000);
+        }
+
+        setInterval(createParticle, 200);
+
+        // Form submission
+        document.querySelector('.config-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const config = {
+                serverName: formData.get('serverName'),
+                serverVersion: formData.get('serverVersion'),
+                serverType: formData.get('serverType'),
+                maxPlayers: parseInt(formData.get('maxPlayers')),
+                difficulty: formData.get('difficulty'),
+                gameMode: formData.get('gameMode'),
+                settings: {
+                    pvp: formData.getAll('settings').includes('pvp'),
+                    commandBlocks: formData.getAll('settings').includes('commandBlocks'),
+                    whitelist: formData.getAll('settings').includes('whitelist'),
+                    onlineMode: formData.getAll('settings').includes('onlineMode')
+                },
+                motd: formData.get('motd'),
+                seed: formData.get('seed') || ''
+            };
+
+            // Simulate deployment
+            const submitBtn = this.querySelector('.submit-btn');
+            submitBtn.textContent = '⏳ Deploying...';
+            submitBtn.disabled = true;
+
+            setTimeout(() => {
+                alert('🔥 Minecraft server deployment initiated! Check your dashboard for status.');
+                submitBtn.textContent = '✅ Deployed!';
+                setTimeout(() => {
+                    submitBtn.textContent = '🚀 Deploy Server';
+                    submitBtn.disabled = false;
+                }, 2000);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
