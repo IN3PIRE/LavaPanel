@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lava Panel - Deploy Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a0a0a 0%, #2d1f1f 50%, #1a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .deploy-container {
+            background: linear-gradient(145deg, #2a1a1a 0%, #1f0f0f 100%);
+            border: 2px solid #ff6b35;
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(255, 107, 53, 0.3),
+                        inset 0 0 60px rgba(255, 107, 53, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .deploy-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
+            animation: lava-glow 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes lava-glow {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            color: #ff6b35;
+            font-size: 2rem;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #ff9f6b;
+            font-size: 1.1rem;
+        }
+
+        .selection-section {
+            position: relative;
+            z-index: 1;
+        }
+
+        .selection-title {
+            text-align: center;
+            color: #ff9f6b;
+            font-size: 1.3rem;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .deploy-options {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .deploy-option {
+            width: 100%;
+            max-width: 280px;
+            padding: 18px 30px;
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 140, 90, 0.1) 100%);
+            border: 2px solid #ff6b35;
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .deploy-option:hover {
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.3) 0%, rgba(255, 140, 90, 0.2) 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5);
+        }
+
+        .deploy-option:active {
+            transform: translateY(-1px);
+        }
+
+        .deploy-option i {
+            font-size: 1.5rem;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-link a {
+            color: #ff9f6b;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link a:hover {
+            color: #ff6b35;
+        }
+
+        /* Lava particle animation */
+        .lava-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #ff6b35;
+            border-radius: 50%;
+            animation: rise 4s infinite ease-in;
+            opacity: 0;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="deploy-container">
+        <div class="header">
+            <h1>🔥 Deploy A Server</h1>
+            <p>Lava Panel Deployment Engine</p>
+        </div>
+
+        <div class="selection-section">
+            <h2 class="selection-title">What do you want to deploy?</h2>
+            
+            <div class="deploy-options">
+                <a href="deploy-discord.html" class="deploy-option">
+                    <span>🤖</span>
+                    <span>Discord Bot</span>
+                </a>
+                
+                <a href="deploy-minecraft.html" class="deploy-option">
+                    <span>⛏️</span>
+                    <span>Minecraft</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="dashboard.html">← Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        // Create lava particles
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'lava-particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (Math.random() * 2 + 3) + 's';
+            document.body.appendChild(particle);
+
+            setTimeout(() => {
+                particle.remove();
+            }, 4000);
+        }
+
+        setInterval(createParticle, 200);
+    </script>
+</body>
+</html>
