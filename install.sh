@@ -16,42 +16,28 @@ CYAN='\033[0;36m'
 ORANGE='\033[0;33m'
 NC='\033[0m' # No Color
 
-# Lava animation frames
-LAVA_FRAMES=(
-    "🔥"
-    "🌋"
-    "💥"
-    "✨"
-    "🚀"
-)
-
 # Progress bar function
 show_progress() {
     local duration=$1
     local bar_width=50
-    local progress=0
-    
-    echo -ne "${CYAN}["
     for ((i=0; i<=bar_width; i++)); do
-        echo -ne "█"
-        sleep $(echo "scale=2; $duration/$bar_width" | bc)
+        echo -ne "\r${CYAN}Progress: [$(printf '%*s' $i | tr ' ' '█')$(printf '%*s' $((bar_width-i)) | tr ' ' '░')] $((i*100/bar_width))%${NC}"
+        sleep 0.05
     done
-    echo -ne "]${NC}\n"
+    echo -ne "\n"
 }
 
 # Animated title
 show_title() {
     clear
     echo -e "${RED}"
-    cat << "EOF"
-     _                   _       _   
-    | |    _____   _____| | __  | |  
-    | |   / _ \ \ / / _ \ |/ /  | |  
-    | |__| (_) \ V /  __/   <   |_|  
-    |_____\___/ \_/ \___|_|\_\  (_)  
-                                     
-    🔥 Server Management Panel 🔥
-EOF
+    echo " _                   _       _   "
+    echo "| |    _____   _____| | __  | |  "
+    echo "| |   / _ \ \ / / _ \ |/ /  | |  "
+    echo "| |__| (_) \ V /  __/   <   |_|  "
+    echo "|_____\___/ \_/ \___|_|\_\  (_)  "
+    echo "                                 "
+    echo "🔥 Server Management Panel 🔥"
     echo -e "${NC}"
     echo -e "${ORANGE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 }
@@ -73,10 +59,12 @@ show_welcome() {
 # Check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        echo -e "${YELLOW}Warning: Running as root is not recommended.${NC}"
+        echo -e "${YELLOW}⚠️  Running as root is not recommended.${NC}"
+        echo -e "${YELLOW}Consider creating a regular user first.${NC}\n"
         read -p "Continue anyway? (y/n): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${RED}Installation cancelled.${NC}"
             exit 1
         fi
     fi
@@ -94,8 +82,9 @@ detect_os() {
         OS=$ID
         echo -e "${GREEN}✓ Detected: $NAME $VERSION${NC}"
     else
-        echo -e "${RED}✗ Unsupported operating system${NC}"
-        exit 1
+        OS="unknown"
+        echo -e "${RED}✗ Could not detect OS, assuming Ubuntu/Debian${NC}"
+        OS="ubuntu"
     fi
 }
 
@@ -109,7 +98,7 @@ check_requirements() {
         echo -e "${GREEN}✓ Node.js installed: $NODE_VERSION${NC}"
     else
         echo -e "${YELLOW}✗ Node.js not found${NC}"
-        read -p "Install Node.js? (y/n): " -n 1 -r
+        read -p "Install Node.js 18.x? (y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             install_nodejs
@@ -130,7 +119,7 @@ check_requirements() {
     
     # Check git
     if command -v git &> /dev/null; then
-        GIT_VERSION=$(git --version)
+        GIT_VERSION=$(git --version | cut -d' ' -f3)
         echo -e "${GREEN}✓ Git installed: $GIT_VERSION${NC}"
     else
         echo -e "${YELLOW}✗ Git not found${NC}"
@@ -150,25 +139,35 @@ check_requirements() {
     
     # Check available memory
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        MEMORY=$(sysctl -n hw.memsize | awk '{printf "%.2f GB\n", $1/1024/1024/1024}')
+        MEMORY=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.2f GB\n", $1/1024/1024/1024}' || echo "Unknown")
     else
-        MEMORY=$(free -h | awk 'NR==2 {printf "%s\n", $2}')
+        MEMORY=$(free -h 2>/dev/null | awk 'NR==2 {printf "%s\n", $2}' || echo "Unknown")
     fi
     echo -e "${GREEN}✓ Available memory: $MEMORY${NC}"
 }
 
 # Install Node.js
 install_nodejs() {
-    echo -e "\n${BLUE}📦 Installing Node.js...${NC}"
+    echo -e "\n${BLUE}📦 Installing Node.js 18.x...${NC}"
     
     case $OS in
         ubuntu|debian)
-            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-            sudo apt-get install -y nodejs
+            echo -e "${CYAN}Updating package lists...${NC}"
+            apt-get update -qq
+            
+            echo -e "${CYAN}Installing curl...${NC}"
+            apt-get install -y -qq curl
+            
+            echo -e "${CYAN}Adding NodeSource repository...${NC}"
+            curl -fsSL https://deb.nodesource.com/setup_18.x | bash - > /dev/null 2>&1
+            
+            echo -e "${CYAN}Installing Node.js...${NC}"
+            apt-get install -y nodejs
             ;;
         fedora|centos|rhel)
-            curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash -
-            sudo yum install -y nodejs
+            echo -e "${CYAN}Installing Node.js from NodeSource...${NC}"
+            curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - > /dev/null 2>&1
+            yum install -y nodejs > /dev/null 2>&1
             ;;
         macos)
             if ! command -v brew &> /dev/null; then
@@ -192,11 +191,11 @@ install_git() {
     
     case $OS in
         ubuntu|debian)
-            sudo apt-get update
-            sudo apt-get install -y git
+            apt-get update -qq > /dev/null 2>&1
+            apt-get install -y -qq git
             ;;
         fedora|centos|rhel)
-            sudo yum install -y git
+            yum install -y git > /dev/null 2>&1
             ;;
         macos)
             brew install git
@@ -215,32 +214,30 @@ clone_repo() {
     echo -e "\n${BLUE}📥 Cloning LavaPanel repository...${NC}"
     
     if [ -d "LavaPanel" ]; then
-        echo -e "${YELLOW}LavaPanel directory already exists${NC}"
+        echo -e "${YELLOW}⚠️  LavaPanel directory already exists${NC}"
         read -p "Remove and reclone? (y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             rm -rf LavaPanel
+            git clone https://github.com/IN3PIRE/LavaPanel.git
+            cd LavaPanel
+            echo -e "${GREEN}✓ Repository cloned successfully${NC}"
         else
             cd LavaPanel
-            return
+            echo -e "${GREEN}✓ Using existing directory${NC}"
         fi
+    else
+        git clone https://github.com/IN3PIRE/LavaPanel.git
+        cd LavaPanel
+        echo -e "${GREEN}✓ Repository cloned successfully${NC}"
     fi
-    
-    git clone https://github.com/IN3PIRE/LavaPanel.git
-    cd LavaPanel
-    echo -e "${GREEN}✓ Repository cloned successfully${NC}"
 }
 
 # Install dependencies
 install_dependencies() {
     echo -e "\n${BLUE}📦 Installing npm dependencies...${NC}"
-    echo -ne "${CYAN}Progress: ${NC}"
-    
-    npm install --legacy-peer-deps 2>&1 | while read -r line; do
-        echo -ne "."
-    done
-    
-    echo
+    show_progress 3
+    npm install --legacy-peer-deps > /dev/null 2>&1
     echo -e "${GREEN}✓ Dependencies installed successfully${NC}"
 }
 
@@ -249,7 +246,7 @@ configure_env() {
     echo -e "\n${BLUE}⚙️  Configuring environment...${NC}\n"
     
     if [ -f ".env" ]; then
-        echo -e "${YELLOW}.env file already exists${NC}"
+        echo -e "${YELLOW}⚠️  .env file already exists${NC}"
         read -p "Overwrite? (y/n): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -267,13 +264,24 @@ configure_env() {
     # Get server port
     read -p "Enter server port [3000]: " PORT
     PORT=${PORT:-3000}
-    sed -i.bak "s/PORT=3000/PORT=$PORT/" .env
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/PORT=3000/PORT=$PORT/" .env
+    else
+        sed -i "s/PORT=3000/PORT=$PORT/" .env
+    fi
     
     # Generate secrets
-    JWT_SECRET=$(openssl rand -hex 32)
-    SESSION_SECRET=$(openssl rand -hex 32)
-    sed -i.bak "s|JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
-    sed -i.bak "s|SESSION_SECRET=.*|SESSION_SECRET=$SESSION_SECRET|" .env
+    JWT_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
+    SESSION_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
+        sed -i '' "s|SESSION_SECRET=.*|SESSION_SECRET=$SESSION_SECRET|" .env
+    else
+        sed -i "s|JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
+        sed -i "s|SESSION_SECRET=.*|SESSION_SECRET=$SESSION_SECRET|" .env
+    fi
     
     echo -e "\n${GREEN}✓ Generated secure JWT and Session secrets${NC}"
     
@@ -293,9 +301,15 @@ configure_env() {
         read -p "Enter Discord Client ID: " DISCORD_CLIENT_ID
         read -p "Enter Discord Client Secret: " DISCORD_CLIENT_SECRET
         
-        sed -i.bak "s|DISCORD_CLIENT_ID=.*|DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID|" .env
-        sed -i.bak "s|DISCORD_CLIENT_SECRET=.*|DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET|" .env
-        sed -i.bak "s|DISCORD_CALLBACK_URL=.*|DISCORD_CALLBACK_URL=http://localhost:$PORT/api/auth/discord/callback|" .env
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|DISCORD_CLIENT_ID=.*|DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID|" .env
+            sed -i '' "s|DISCORD_CLIENT_SECRET=.*|DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET|" .env
+            sed -i '' "s|DISCORD_CALLBACK_URL=.*|DISCORD_CALLBACK_URL=http://localhost:$PORT/api/auth/discord/callback|" .env
+        else
+            sed -i "s|DISCORD_CLIENT_ID=.*|DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID|" .env
+            sed -i "s|DISCORD_CLIENT_SECRET=.*|DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET|" .env
+            sed -i "s|DISCORD_CALLBACK_URL=.*|DISCORD_CALLBACK_URL=http://localhost:$PORT/api/auth/discord/callback|" .env
+        fi
         
         echo -e "${GREEN}✓ Discord OAuth configured${NC}"
     else
@@ -316,7 +330,11 @@ configure_env() {
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         read -p "Enter Telegram Bot Token: " TELEGRAM_BOT_TOKEN
         
-        sed -i.bak "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|" .env
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|" .env
+        else
+            sed -i "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|" .env
+        fi
         
         echo -e "${GREEN}✓ Telegram Bot configured${NC}"
     else
@@ -324,7 +342,7 @@ configure_env() {
     fi
     
     # Cleanup backup files
-    rm -f .env.bak
+    rm -f .env.bak 2>/dev/null || true
     
     echo -e "\n${GREEN}✓ Environment configuration complete${NC}"
 }
@@ -338,14 +356,14 @@ install_pm2() {
     read -p "Install PM2? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        npm install -g pm2
+        npm install -g pm2 > /dev/null 2>&1
         echo -e "${GREEN}✓ PM2 installed globally${NC}"
         
-        read -p "Start LavaPanel with PM2? (y/n): " -n 1 -r
+        read -p "Start LavaPanel with PM2 now? (y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            pm2 start server/index.js --name lavapanel
-            pm2 save
+            pm2 start server/index.js --name lavapanel > /dev/null 2>&1
+            pm2 save > /dev/null 2>&1
             echo -e "${GREEN}✓ LavaPanel started with PM2${NC}"
             return 0
         fi
@@ -357,7 +375,7 @@ install_pm2() {
 start_server() {
     echo -e "\n${BLUE}🚀 Starting LavaPanel...${NC}"
     
-    if command -v pm2 &> /dev/null && [[ $(pm2 list | grep -c lavapanel) -gt 0 ]]; then
+    if command -v pm2 &> /dev/null && pm2 list | grep -q lavapanel; then
         echo -e "${GREEN}✓ LavaPanel already running via PM2${NC}"
         pm2 status lavapanel
         return
@@ -367,16 +385,17 @@ start_server() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         if command -v pm2 &> /dev/null; then
-            pm2 start server/index.js --name lavapanel
-            pm2 save
+            pm2 start server/index.js --name lavapanel > /dev/null 2>&1
+            pm2 save > /dev/null 2>&1
             echo -e "${GREEN}✓ Server started with PM2${NC}"
         else
             echo -e "${YELLOW}Starting in development mode...${NC}"
-            echo -e "${CYAN}Press Ctrl+C to stop${NC}\n"
-            npm start &
+            echo -e "${CYAN}Server will run in foreground. Press Ctrl+C to stop.${NC}\n"
+            nohup npm start > lavapanel.log 2>&1 &
             SERVER_PID=$!
             echo $SERVER_PID > /tmp/lavapanel.pid
             echo -e "${GREEN}✓ Server started (PID: $SERVER_PID)${NC}"
+            echo -e "${CYAN}Logs available at: lavapanel.log${NC}"
         fi
     fi
 }
@@ -434,7 +453,7 @@ show_status() {
     
     echo -e "📚 Docs: ${CYAN}https://github.com/IN3PIRE/LavaPanel/tree/main/docs${NC}"
     echo -e "🐛 Issues: ${CYAN}https://github.com/IN3PIRE/LavaPanel/issues${NC}"
-    echo -e "💬 Discord: ${CYAN}[Coming Soon]${NC}"
+    echo -e "💬 Discord: ${CYAN}Coming Soon${NC}"
     echo
     
     echo -e "${ORANGE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -446,7 +465,13 @@ show_status() {
 }
 
 # Error handler
-trap 'echo -e "\n${RED}✗ Installation failed at step: $BASH_COMMAND${NC}"; exit 1' ERR
+handle_error() {
+    echo -e "\n${RED}✗ Installation failed at step: $BASH_COMMAND${NC}"
+    echo -e "${YELLOW}Try running the installer again or check the logs above.${NC}"
+    exit 1
+}
+
+trap handle_error ERR
 
 # Main installation flow
 main() {
@@ -454,7 +479,7 @@ main() {
     show_welcome
     
     echo -e "${YELLOW}Press Enter to continue or Ctrl+C to cancel...${NC}"
-    read
+    read -r
     
     check_root
     detect_os
@@ -462,7 +487,7 @@ main() {
     clone_repo
     install_dependencies
     configure_env
-    install_pm2
+    install_pm2 || true
     start_server
     show_status
 }
