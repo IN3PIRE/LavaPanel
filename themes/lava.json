@@ -1,0 +1,34 @@
+{
+  "name": "lava",
+  "author": "LavaPanel",
+  "description": "Default lava-inspired theme with warm oranges and reds",
+  "config": {
+    "primary": "#ff6b35",
+    "secondary": "#ff8c5a",
+    "background": "#1a0a0a",
+    "backgroundGradient": "linear-gradient(135deg, #1a0a0a 0%, #2d1f1f 50%, #1a0a0a 100%)",
+    "text": "#ffffff",
+    "textSecondary": "#ff9f6b",
+    "border": "#ff6b35",
+    "glow": "rgba(255, 107, 53, 0.3)",
+    "cardBackground": "linear-gradient(145deg, #2a1a1a 0%, #1f0f0f 100%)",
+    "buttonGradient": "linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%)",
+    "success": "#4ade80",
+    "warning": "#fbbf24",
+    "error": "#f87171",
+    "info": "#60a5fa"
+  },
+  "cssVariables": {
+    "--primary": "#ff6b35",
+    "--secondary": "#ff8c5a",
+    "--background": "#1a0a0a",
+    "--text": "#ffffff",
+    "--text-secondary": "#ff9f6b",
+    "--border": "#ff6b35",
+    "--glow": "rgba(255, 107, 53, 0.3)",
+    "--success": "#4ade80",
+    "--warning": "#fbbf24",
+    "--error": "#f87171",
+    "--info": "#60a5fa"
+  }
+}
