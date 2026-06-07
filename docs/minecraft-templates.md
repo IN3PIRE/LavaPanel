@@ -1,102 +1,200 @@
-# Minecraft Server Deployment Templates
+# Minecraft Server Templates
 
-**Easy one-click deployment for Minecraft servers**
+Pre-configured templates for deploying Minecraft servers via LavaPanel.
 
----
-
-## 🎮 Supported Server Types
+## Available Templates
 
 ### Vanilla Minecraft
-- Latest stable version
-- Snapshot versions
-- Custom JAR support
+The classic Minecraft server experience.
 
-### Spigot/PaperMC
-- Optimized performance
-- Plugin support
-- Auto-updates
+**Requirements:**
+- Java 17+
+- Minimum 2GB RAM
+- server.jar (Mojang official)
 
-### Forge/Modded
-- Modpack support
-- Version management
-- Memory optimization
-
-## ⚙️ Configuration Options
-
-```yaml
-server:
-  name: "My Minecraft Server"
-  type: "papermc"  # vanilla, spigot, papermc, forge
-  version: "1.20.4"
-  max_players: 20
-  motd: "Welcome to my server!"
-  
-resources:
-  memory: "2G"
-  cpu: 1.0
-  disk: "5G"
-  
-networking:
-  port: 25565
-  ip_binding: "0.0.0.0"
-  
-plugins:
-  - essentials
-  - worldedit
-  - vault
+**Configuration:**
+```json
+{
+  "version": "1.20.1",
+  "ram": "2G",
+  "port": 25565,
+  "maxPlayers": 20,
+  "difficulty": "normal",
+  "gamemode": "survival"
+}
 ```
 
-## 🚀 Quick Deploy Steps
+### Spigot
+Optimized server with plugin support.
 
-1. **Choose Server Type**
-   - Select from template library
-   - Or upload custom JAR
+**Requirements:**
+- Java 17+
+- Minimum 3GB RAM
+- spigot-1.20.1.jar
 
-2. **Configure Resources**
-   - Set memory allocation
-   - Choose CPU priority
-   - Allocate disk space
+**Configuration:**
+```json
+{
+  "version": "1.20.1",
+  "ram": "3G",
+  "port": 25565,
+  "maxPlayers": 50,
+  "plugins": [
+    "EssentialsX",
+    "WorldEdit",
+    "LuckPerms"
+  ]
+}
+```
 
-3. **Customize Settings**
-   - Server name & MOTD
-   - Player limits
-   - World settings
+### Paper
+High-performance Spigot fork.
 
-4. **Deploy**
-   - One-click deployment
-   - Auto-generates configs
-   - Starts server automatically
+**Requirements:**
+- Java 17+
+- Minimum 3GB RAM
+- paper-1.20.1.jar
 
-## 📦 Pre-configured Templates
+**Configuration:**
+```json
+{
+  "version": "1.20.1",
+  "ram": "4G",
+  "port": 25565,
+  "maxPlayers": 100,
+  "viewDistance": 12,
+  "simulationDistance": 12
+}
+```
 
-### Starter Template
-- 20 players max
-- 2GB RAM
-- Basic plugins
-- Perfect for small groups
+### Forge (Modded)
+Minecraft Forge for modpacks.
 
-### Community Template
-- 50 players max
-- 4GB RAM
-- Advanced plugins
-- World management
+**Requirements:**
+- Java 17+
+- Minimum 4GB RAM (6GB+ for large modpacks)
+- forge-installer.jar
 
-### Modpack Template
-- Custom JAR support
-- 6GB+ RAM recommended
-- Forge/Fabric ready
-- Mod management
+**Configuration:**
+```json
+{
+  "version": "1.20.1",
+  "ram": "6G",
+  "port": 25565,
+  "maxPlayers": 30,
+  "modpack": "Better MC",
+  "javaArgs": "-XX:+UseG1GC"
+}
+```
 
-## 🔧 Advanced Features
+### Bedrock (Geyser)
+Allow Bedrock players to join Java servers.
 
-- **Auto-restart** on crash
-- **Backup scheduling**
-- **Console access**
-- **File manager**
-- **Plugin manager**
-- **World uploader**
-- **Schedule tasks**
+**Requirements:**
+- Java server running
+- Geyser-Spigot plugin
+- Floodgate plugin (optional)
 
----
+**Configuration:**
+```json
+{
+  "version": "1.20.1",
+  "ram": "4G",
+  "port": 25565,
+  "bedrockPort": 19132,
+  "geyser": true
+}
+```
 
-**Status:** 🚧 Coming in Phase 1 completion!
+## Deployment Steps
+
+1. **Choose Template**: Select your server type from the panel
+2. **Configure**: Set RAM, player count, and other options
+3. **Deploy**: Click "Deploy Server"
+4. **Upload JAR**: Upload your server jar file
+5. **Accept EULA**: Edit eula.txt to accept
+6. **Start**: Click "Start Server"
+
+## Server Properties
+
+Common server.properties settings:
+
+```properties
+server-port=25565
+gamemode=survival
+difficulty=normal
+max-players=20
+motd=My LavaPanel Server
+view-distance=10
+online-mode=true
+pvp=true
+allow-flight=false
+spawn-protection=16
+```
+
+## Performance Tips
+
+### Server Optimization
+- Use PaperMC instead of vanilla for better performance
+- Allocate appropriate RAM (not too much, not too little)
+- Reduce view distance for lag reduction
+- Use performance plugins:
+  - Chunky (pre-generate chunks)
+  - ClearLag (remove entities)
+  - Spark (profiling)
+
+### JVM Arguments
+```bash
+# Optimized JVM flags for Java 17+
+java -Xms2G -Xmx4G \
+  -XX:+UseG1GC \
+  -XX:G1HeapRegionSize=4M \
+  -XX:MaxGCPauseMillis=100 \
+  -jar server.jar nogui
+```
+
+## Troubleshooting
+
+### Server Won't Start
+- Check Java version: `java -version`
+- Verify jar file is correct
+- Check logs in panel for errors
+- Ensure port is not in use
+
+### Lag Issues
+- Reduce view distance
+- Limit redstone contraptions
+- Use performance mods/plugins
+- Monitor RAM usage
+
+### Connection Problems
+- Check firewall settings
+- Verify port forwarding
+- Ensure server is online
+- Check server IP and port
+
+## Backup & Restore
+
+### Creating Backups
+```bash
+# Manual backup
+cp -r server-world ../backup-$(date +%Y%m%d)
+
+# Or use panel backup feature
+```
+
+### Restoring Backup
+```bash
+# Stop server
+# Replace world folder
+rm -rf server-world
+cp -r ../backup-20260107 server-world
+# Start server
+```
+
+## Support
+
+For issues or questions:
+- Check documentation
+- Join our Discord server
+- Open GitHub issue
