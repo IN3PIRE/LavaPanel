@@ -100,7 +100,30 @@ LavaPanel/
 
 ## 🚀 Quick Start
 
-### Installation
+### ⚡ One-Command Installation (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IN3PIRE/LavaPanel/main/install.sh | bash
+```
+
+Or download and run manually:
+
+```bash
+wget https://raw.githubusercontent.com/IN3PIRE/LavaPanel/main/install.sh
+chmod +x install.sh
+./install.sh
+```
+
+The interactive installer will:
+- ✅ Check system requirements
+- ✅ Install Node.js and dependencies
+- ✅ Clone the repository
+- ✅ Install npm packages
+- ✅ Configure environment (Discord/Telegram)
+- ✅ Set up PM2 for production
+- ✅ Start the server
+
+### 📦 Manual Installation
 
 ```bash
 # Clone the repository
