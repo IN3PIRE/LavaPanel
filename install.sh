@@ -1,14 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "LavaPanel Installer v2.0.3"
+echo "LavaPanel Installer v2.0.4"
 echo "=========================="
 echo ""
 
 INSTALL_DIR="/opt/LavaPanel"
 PORT=3000
 
-# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
@@ -48,31 +47,47 @@ if [[ -f /etc/os-release ]]; then
     esac
 fi
 
-# Check/install Node.js
+# Update apt
+log_step "Updating package lists..."
+$SUDO apt-get update -qq
+
+# Install Node.js and npm if missing
 log_step "Checking Node.js..."
 if command -v node &>/dev/null; then
     NODE_VER=$(node -v | cut -d'.' -f1 | tr -d 'v')
     if [[ "$NODE_VER" -ge 18 ]]; then
         log_ok "Node.js $(node -v) already installed"
+        if ! command -v npm &>/dev/null; then
+            log_step "Installing npm..."
+            $SUDO apt-get install -y -qq npm
+            log_ok "npm installed"
+        fi
     else
         log_step "Upgrading Node.js to v18..."
-        $SUDO apt-get update -qq
         $SUDO apt-get install -y -qq nodejs npm
         log_ok "Node.js $(node -v) installed"
     fi
 else
-    log_step "Installing Node.js 18..."
-    $SUDO apt-get update -qq
+    log_step "Installing Node.js 18 and npm..."
     $SUDO apt-get install -y -qq nodejs npm
-    log_ok "Node.js $(node -v) installed"
+    log_ok "Node.js $(node -v) and npm installed"
 fi
 
-# Check/install git
+# Install git if missing
 if ! command -v git &>/dev/null; then
     log_step "Installing git..."
     $SUDO apt-get install -y -qq git
     log_ok "git installed"
 fi
+
+# Install other tools if missing
+for pkg in curl openssl xxd; do
+    if ! command -v "$pkg" &>/dev/null; then
+        log_step "Installing $pkg..."
+        $SUDO apt-get install -y -qq "$pkg"
+        log_ok "$pkg installed"
+    fi
+done
 
 # Clone repo
 log_step "Cloning LavaPanel..."
