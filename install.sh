@@ -1,207 +1,156 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_VERSION="2.0.2"
-LOG_FILE="/var/log/lavapanel-install.log"
-INSTALL_DIR="/opt/LavaPanel"
-SERVICE_NAME="lavapanel"
-DEFAULT_PORT=3000
+echo "LavaPanel Installer v2.0.3"
+echo "=========================="
+echo ""
 
-RED='\033[0;31m'
+INSTALL_DIR="/opt/LavaPanel"
+PORT=3000
+
+# Colors
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+RED='\033[0;31m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}[INFO] $*${NC}"; }
-log_success() { echo -e "${GREEN}[SUCCESS] $*${NC}"; }
-log_warning() { echo -e "${YELLOW}[WARNING] $*${NC}"; }
-log_error() { echo -e "${RED}[ERROR] $*${NC}" >&2; }
-log_progress() { echo -e "${BLUE}[...] $*${NC}"; }
+log_step() { echo -e "${BLUE}[...] $1${NC}"; }
+log_ok() { echo -e "${GREEN}[OK] $1${NC}"; }
+log_err() { echo -e "${RED}[ERROR] $1${NC}" >&2; }
 
-cleanup() {
-    local exit_code=$?
-    if [[ $exit_code -ne 0 ]]; then
-        log_error "Installation failed with exit code: $exit_code"
-        log_error "Check log file: $LOG_FILE"
+# Check root
+if [[ $EUID -ne 0 ]]; then
+    if ! sudo -v 2>/dev/null; then
+        log_err "Root or sudo required"
+        exit 1
     fi
-}
-trap cleanup EXIT
+    SUDO="sudo"
+else
+    SUDO=""
+fi
 
-error_exit() { log_error "$1"; exit "${2:-1}"; }
-
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        if ! command -v sudo &> /dev/null || ! sudo -v &> /dev/null; then
-            error_exit "Root or sudo privileges required" 4
-        fi
-        SUDO_CMD="sudo"
-    else
-        SUDO_CMD=""
-    fi
-}
-
-detect_os() {
-    log_progress "Detecting operating system..."
-    if [[ -f /etc/os-release ]]; then
-        . /etc/os-release
-        case "$ID" in
-            ubuntu|debian|linuxmint|pop|elementary)
-                log_success "Detected Debian-based system: $NAME $VERSION"
-                return 0
-                ;;
-            *)
-                if [[ "${ID_LIKE:-}" == *"debian"* ]]; then
-                    log_success "Detected Debian-like system: $NAME $VERSION"
-                    return 0
-                fi
-                ;;
-        esac
-    fi
-    error_exit "Unsupported OS. Requires Debian/Ubuntu-based system." 1
-}
-
-install_nodejs() {
-    log_progress "Installing Node.js 18.x..."
-    
-    if ! $SUDO_CMD apt-get install -y curl ca-certificates gnupg; then
-        error_exit "Failed to install prerequisites" 1
-    fi
-    
-    $SUDO_CMD mkdir -p /etc/apt/keyrings
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | $SUDO_CMD gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-    
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | $SUDO_CMD tee /etc/apt/sources.list.d/nodesource.list
-    
-    $SUDO_CMD apt-get update
-    $SUDO_CMD apt-get install -y nodejs
-    
-    if command -v node &> /dev/null && command -v npm &> /dev/null; then
-        log_success "Node.js $(node -v) and npm $(npm -v) installed"
-    else
-        error_exit "Node.js installation failed" 1
-    fi
-}
-
-check_and_install_deps() {
-    log_progress "Checking dependencies..."
-    local missing=()
-    
-    for cmd in curl git; do
-        if ! command -v "$cmd" &> /dev/null; then
-            missing+=("$cmd")
-        fi
-    done
-    
-    if ! command -v node &> /dev/null; then
-        missing+=("nodejs")
-    elif [[ "$(node -v | cut -d'.' -f1 | tr -d 'v')" -lt 18 ]]; then
-        missing+=("nodejs-upgrade")
-    fi
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_warning "Missing: ${missing[*]}"
-        log_progress "Installing dependencies..."
-        
-        $SUDO_CMD apt-get update
-        
-        local to_install=()
-        for dep in "${missing[@]}"; do
-            if [[ "$dep" == "nodejs" || "$dep" == "nodejs-upgrade" ]]; then
-                install_nodejs
+# Detect OS
+log_step "Checking OS..."
+if [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+    case "$ID" in
+        ubuntu|debian|linuxmint|pop|elementary)
+            log_ok "Detected $NAME $VERSION"
+            ;;
+        *)
+            if [[ "${ID_LIKE:-}" == *"debian"* ]]; then
+                log_ok "Detected $NAME $VERSION (Debian-like)"
             else
-                to_install+=("$dep")
+                log_err "Unsupported OS: $ID. Need Debian/Ubuntu."
+                exit 1
             fi
-        done
-        
-        if [[ ${#to_install[@]} -gt 0 ]]; then
-            $SUDO_CMD apt-get install -y "${to_install[@]}"
-        fi
-        
-        log_success "Dependencies installed"
-    else
-        log_success "All dependencies satisfied"
-    fi
-}
+            ;;
+    esac
+fi
 
-clone_repo() {
-    log_progress "Cloning LavaPanel..."
-    
-    if [[ -d "$INSTALL_DIR" ]]; then
-        if [[ -d "$INSTALL_DIR/.git" ]]; then
-            log_info "Updating existing installation..."
-            cd "$INSTALL_DIR"
-            git pull || log_warning "Update failed, continuing"
-            cd - > /dev/null
-        else
-            error_exit "$INSTALL_DIR exists but is not a git repo" 2
-        fi
+# Check/install Node.js
+log_step "Checking Node.js..."
+if command -v node &>/dev/null; then
+    NODE_VER=$(node -v | cut -d'.' -f1 | tr -d 'v')
+    if [[ "$NODE_VER" -ge 18 ]]; then
+        log_ok "Node.js $(node -v) already installed"
     else
-        $SUDO_CMD git clone --depth 1 https://github.com/IN3PIRE/LavaPanel.git "$INSTALL_DIR"
-        log_success "Repository cloned"
+        log_step "Upgrading Node.js to v18..."
+        $SUDO apt-get update -qq
+        $SUDO apt-get install -y -qq nodejs npm
+        log_ok "Node.js $(node -v) installed"
     fi
-}
+else
+    log_step "Installing Node.js 18..."
+    $SUDO apt-get update -qq
+    $SUDO apt-get install -y -qq nodejs npm
+    log_ok "Node.js $(node -v) installed"
+fi
 
-install_deps() {
-    log_progress "Installing npm dependencies..."
-    cd "$INSTALL_DIR"
-    
-    if npm ci --legacy-peer-deps 2>/dev/null; then
-        log_success "Dependencies installed (npm ci)"
+# Check/install git
+if ! command -v git &>/dev/null; then
+    log_step "Installing git..."
+    $SUDO apt-get install -y -qq git
+    log_ok "git installed"
+fi
+
+# Clone repo
+log_step "Cloning LavaPanel..."
+if [[ -d "$INSTALL_DIR" ]]; then
+    if [[ -d "$INSTALL_DIR/.git" ]]; then
+        cd "$INSTALL_DIR"
+        git pull || true
+        cd - >/dev/null
+        log_ok "Repository updated"
     else
-        log_warning "npm ci failed, trying npm install..."
-        if npm install --legacy-peer-deps; then
-            log_success "Dependencies installed (npm install)"
-        else
-            error_exit "Failed to install npm dependencies" 2
-        fi
+        log_err "$INSTALL_DIR exists but not a git repo"
+        exit 1
     fi
-    
-    cd - > /dev/null
-}
+else
+    $SUDO git clone --depth 1 https://github.com/IN3PIRE/LavaPanel.git "$INSTALL_DIR"
+    log_ok "Repository cloned"
+fi
 
-setup_config() {
-    log_progress "Configuring LavaPanel..."
-    cd "$INSTALL_DIR"
-    
-    if [[ ! -f ".env" ]]; then
-        cp .env.example .env 2>/dev/null || cat > .env << 'ENVEOF'
-PORT=3000
-NODE_ENV=production
-DATABASE_PATH=./data/lavapanel.db
-JWT_SECRET=change-me
-SESSION_SECRET=change-me
-FRONTEND_URL=http://localhost:3000
-ENVEOF
+# Install npm deps
+log_step "Installing npm dependencies..."
+cd "$INSTALL_DIR"
+if npm ci --legacy-peer-deps 2>/dev/null; then
+    log_ok "Dependencies installed (npm ci)"
+else
+    log_step "npm ci failed, trying npm install..."
+    if npm install --legacy-peer-deps; then
+        log_ok "Dependencies installed (npm install)"
     else
-        cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+        log_err "Failed to install dependencies"
+        exit 1
     fi
-    
-    local jwt=$(grep "^JWT_SECRET=" .env | cut -d'=' -f2-)
-    if [[ -z "$jwt" || "$jwt" == "change-me"* || "$jwt" == "your-"* ]]; then
-        local newjwt=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
-        sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$newjwt|" .env
-    fi
-    
-    local sess=$(grep "^SESSION_SECRET=" .env | cut -d'=' -f2-)
-    if [[ -z "$sess" || "$sess" == "change-me"* || "$sess" == "your-"* ]]; then
-        local newsess=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
-        sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$newsess|" .env
-    fi
-    
-    sed -i "s|^PORT=.*|PORT=$DEFAULT_PORT|" .env
-    
-    local datadir=$(grep "^DATABASE_PATH=" .env | cut -d'=' -f2 | xargs dirname)
-    [[ -n "$datadir" && "$datadir" != "." ]] && mkdir -p "$datadir"
-    
-    cd - > /dev/null
-    log_success "Configuration complete"
-}
+fi
 
-setup_service() {
-    log_progress "Setting up systemd service..."
-    
-    cat > /tmp/lavapanel.service << SVCEOF
+# Setup .env
+log_step "Configuring..."
+if [[ ! -f ".env" ]]; then
+    cp .env.example .env 2>/dev/null || echo "PORT=3000" > .env
+fi
+
+# Generate secrets
+JWT=$(grep "^JWT_SECRET=" .env 2>/dev/null | cut -d'=' -f2-)
+if [[ -z "$JWT" || "$JWT" == *"change"* || "$JWT" == *"your-"* ]]; then
+    NEWJWT=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
+    if grep -q "^JWT_SECRET=" .env 2>/dev/null; then
+        sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$NEWJWT|" .env
+    else
+        echo "JWT_SECRET=$NEWJWT" >> .env
+    fi
+fi
+
+SESS=$(grep "^SESSION_SECRET=" .env 2>/dev/null | cut -d'=' -f2-)
+if [[ -z "$SESS" || "$SESS" == *"change"* || "$SESS" == *"your-"* ]]; then
+    NEWSESS=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p)
+    if grep -q "^SESSION_SECRET=" .env 2>/dev/null; then
+        sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$NEWSESS|" .env
+    else
+        echo "SESSION_SECRET=$NEWSESS" >> .env
+    fi
+fi
+
+# Set port
+if grep -q "^PORT=" .env 2>/dev/null; then
+    sed -i "s|^PORT=.*|PORT=$PORT|" .env
+else
+    echo "PORT=$PORT" >> .env
+fi
+
+# Create data dir
+DATADIR=$(grep "^DATABASE_PATH=" .env 2>/dev/null | cut -d'=' -f2 | xargs dirname 2>/dev/null || echo "")
+if [[ -n "$DATADIR" && "$DATADIR" != "." ]]; then
+    mkdir -p "$DATADIR"
+fi
+
+log_ok "Configuration complete"
+
+# Setup systemd
+log_step "Setting up service..."
+cat > /tmp/lavapanel.service << 'EOF'
 [Unit]
 Description=LavaPanel Server
 After=network.target
@@ -209,75 +158,48 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=$INSTALL_DIR
+WorkingDirectory=/opt/LavaPanel
 ExecStart=/usr/bin/node server/index.js
 Restart=on-failure
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-SVCEOF
+EOF
 
-    $SUDO_CMD cp /tmp/lavapanel.service /etc/systemd/system/lavapanel.service
-    $SUDO_CMD systemctl daemon-reload
-    $SUDO_CMD systemctl enable lavapanel
-    $SUDO_CMD systemctl start lavapanel
-    
-    rm -f /tmp/lavapanel.service
-    
-    sleep 2
-    if $SUDO_CMD systemctl is-active --quiet lavapanel; then
-        log_success "Service started and running"
-    else
-        log_warning "Service may not be healthy. Check: systemctl status lavapanel"
-    fi
-}
+$SUDO cp /tmp/lavapanel.service /etc/systemd/system/lavapanel.service
+$SUDO systemctl daemon-reload
+$SUDO systemctl enable lavapanel
+$SUDO systemctl start lavapanel
+rm -f /tmp/lavapanel.service
 
-show_summary() {
-    echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  LAVAPANEL INSTALLED SUCCESSFULLY${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo "Install Path: $INSTALL_DIR"
-    echo "Port: $DEFAULT_PORT"
-    echo ""
-    echo "Access:"
-    echo "  Local: http://localhost:$DEFAULT_PORT"
-    if command -v hostname &> /dev/null; then
-        echo "  Server: http://$(hostname -I | awk '{print $1}'):${DEFAULT_PORT}"
-    fi
-    echo ""
-    echo "Commands:"
-    echo "  Status:  sudo systemctl status lavapanel"
-    echo "  Logs:    sudo journalctl -u lavapanel -f"
-    echo "  Restart: sudo systemctl restart lavapanel"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Open http://localhost:$DEFAULT_PORT"
-    echo "  2. Complete setup wizard"
-    echo ""
-    echo -e "${GREEN}Enjoy!${NC}"
-}
+sleep 2
+if $SUDO systemctl is-active --quiet lavapanel; then
+    log_ok "Service running"
+else
+    echo -e "${BLUE}[INFO] Service starting (check: systemctl status lavapanel)${NC}"
+fi
 
-main() {
-    echo ""
-    echo -e "${BLUE}LavaPanel Installer v${SCRIPT_VERSION}${NC}"
-    echo "================================"
-    echo ""
-    
-    touch "$LOG_FILE" 2>/dev/null || true
-    
-    check_root
-    detect_os
-    check_and_install_deps
-    clone_repo
-    install_deps
-    setup_config
-    setup_service
-    show_summary
-    
-    exit 0
-}
-
-main "$@"
+# Summary
+echo ""
+echo -e "${GREEN}============================================${NC}"
+echo -e "${GREEN}  LAVAPANEL INSTALLED SUCCESSFULLY${NC}"
+echo -e "${GREEN}============================================${NC}"
+echo ""
+echo "Location: $INSTALL_DIR"
+echo "Port: $PORT"
+echo ""
+echo "Access:"
+echo "  Local:   http://localhost:$PORT"
+if command -v hostname &>/dev/null; then
+    echo "  Server:  http://$(hostname -I | awk '{print $1}'):${PORT}"
+fi
+echo ""
+echo "Commands:"
+echo "  Status:  systemctl status lavapanel"
+echo "  Logs:    journalctl -u lavapanel -f"
+echo "  Restart: systemctl restart lavapanel"
+echo ""
+echo "Next: Open http://localhost:$PORT in your browser"
+echo ""
+echo -e "${GREEN}Enjoy!${NC}"
