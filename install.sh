@@ -6,6 +6,7 @@
 #   Target: Debian/Ubuntu-based Linux (x86_64)
 #   Requirements: root or sudo access
 #   GitHub: https://github.com/IN3PIRE/LavaPanel
+#   Version: 2.0.1 (Fixed Unicode compatibility)
 #===============================================================================
 
 set -euo pipefail
@@ -13,7 +14,7 @@ set -euo pipefail
 #-------------------------------------------------------------------------------
 #   Configuration & Constants
 #-------------------------------------------------------------------------------
-readonly SCRIPT_VERSION="2.0.0"
+readonly SCRIPT_VERSION="2.0.1"
 readonly SCRIPT_NAME="lavapanel-installer"
 readonly LOG_FILE="/var/log/lavapanel-install.log"
 readonly INSTALL_DIR="/opt/LavaPanel"
@@ -29,7 +30,7 @@ readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly CYAN='\033[0;36m'
-readonly NC='\033[0m' # No Color
+readonly NC='\033[0m'
 readonly BOLD='\033[1m'
 
 #-------------------------------------------------------------------------------
@@ -81,7 +82,7 @@ log_verbose() {
 
 log_progress() {
     local msg="[PROGRESS] $*"
-    echo -e "${CYAN}⏳ ${msg}${NC}"
+    echo -e "${CYAN}[...] ${msg}${NC}"
     echo "$msg" >> "$LOG_FILE" 2>/dev/null || true
 }
 
@@ -94,9 +95,9 @@ cleanup() {
         log_error "Installation failed with exit code: $exit_code"
         log_error "Check log file: $LOG_FILE"
         echo ""
-        echo -e "${RED}═══════════════════════════════════════════════════════════${NC}"
+        echo -e "${RED}=================================================================${NC}"
         echo -e "${RED}  INSTALLATION FAILED${NC}"
-        echo -e "${RED}═══════════════════════════════════════════════════════════${NC}"
+        echo -e "${RED}=================================================================${NC}"
         echo ""
         echo "Troubleshooting steps:"
         echo "  1. Review the log file: tail -n 50 $LOG_FILE"
@@ -207,7 +208,6 @@ parse_arguments() {
                 shift
                 ;;
             *)
-                # Check if it's an environment variable
                 if [[ "$1" =~ ^[A-Z_]+=.* ]]; then
                     export "$1"
                 else
@@ -220,7 +220,6 @@ parse_arguments() {
         esac
     done
     
-    # Apply custom install dir if provided
     if [[ -n "$CUSTOM_INSTALL_DIR" ]]; then
         INSTALL_DIR="$CUSTOM_INSTALL_DIR"
     fi
@@ -233,7 +232,6 @@ detect_os() {
     log_progress "Detecting operating system..."
     
     if [[ -f /etc/os-release ]]; then
-        # shellcheck disable=SC1091
         . /etc/os-release
         OS_NAME="$ID"
         OS_VERSION="$VERSION_ID"
@@ -244,7 +242,6 @@ detect_os() {
     
     log_verbose "OS detected: $OS_NAME $OS_VERSION"
     
-    # Check if Debian/Ubuntu-based
     case "$OS_NAME" in
         ubuntu|debian|linuxmint|pop|elementary|neon|zorin|kali|parrot)
             OS_FAMILY="debian"
@@ -261,18 +258,17 @@ detect_os() {
                 echo "Your system: $NAME $VERSION ($OS_NAME)"
                 echo ""
                 echo "Supported distributions:"
-                echo "  • Ubuntu 20.04+ (Focal Fossa and newer)"
-                echo "  • Debian 10+ (Buster and newer)"
-                echo "  • Linux Mint 20+"
-                echo "  • Pop!_OS 20.04+"
-                echo "  • Other Debian derivatives"
+                echo "  - Ubuntu 20.04+ (Focal Fossa and newer)"
+                echo "  - Debian 10+ (Buster and newer)"
+                echo "  - Linux Mint 20+"
+                echo "  - Pop!_OS 20.04+"
+                echo "  - Other Debian derivatives"
                 echo ""
                 error_exit "OS not supported. Please use a Debian/Ubuntu-based system." 1
             fi
             ;;
     esac
     
-    # Check architecture
     ARCH=$(uname -m)
     if [[ "$ARCH" != "x86_64" && "$ARCH" != "amd64" ]]; then
         log_warning "Non-standard architecture detected: $ARCH"
@@ -322,20 +318,18 @@ check_dependencies() {
             missing_deps+=("$dep")
             log_verbose "Missing: $dep"
         else
-            log_verbose "✓ Found: $dep"
+            log_verbose "Found: $dep"
         fi
     done
     
-    # Check Node.js and npm separately
     local node_installed=false
     local npm_installed=false
     
     if check_command "node"; then
         local node_version
         node_version=$(node -v 2>/dev/null || echo "unknown")
-        log_verbose "✓ Found: Node.js $node_version"
+        log_verbose "Found: Node.js $node_version"
         
-        # Check if version is adequate (v18+)
         if [[ "$node_version" != "unknown" ]]; then
             local major_version
             major_version=$(echo "$node_version" | cut -d'.' -f1 | tr -d 'v')
@@ -355,7 +349,7 @@ check_dependencies() {
     if check_command "npm"; then
         local npm_version
         npm_version=$(npm -v 2>/dev/null || echo "unknown")
-        log_verbose "✓ Found: npm $npm_version"
+        log_verbose "Found: npm $npm_version"
         npm_installed=true
     else
         if ! $npm_installed; then
@@ -391,13 +385,11 @@ install_dependencies() {
     
     log_progress "Installing missing dependencies..."
     
-    # Update package lists
     log_info "Updating package lists..."
     if ! $SUDO_CMD apt-get update -qq; then
         error_exit "Failed to update package lists" 1
     fi
     
-    # Install basic dependencies (curl, git)
     local basic_deps=()
     local node_dep_needed=false
     
@@ -410,7 +402,6 @@ install_dependencies() {
                 node_dep_needed=true
                 ;;
             npm)
-                # npm comes with nodejs package
                 node_dep_needed=true
                 ;;
         esac
@@ -424,12 +415,10 @@ install_dependencies() {
         log_success "Installed: ${basic_deps[*]}"
     fi
     
-    # Install Node.js via NodeSource (preferred for v18+)
     if [[ "$node_dep_needed" == true ]]; then
         install_nodejs
     fi
     
-    # Verify installation
     log_progress "Verifying dependencies..."
     if check_dependencies; then
         log_success "All dependencies installed successfully"
@@ -442,14 +431,11 @@ install_dependencies() {
 install_nodejs() {
     log_info "Installing Node.js ${REQUIRED_NODE_VERSION}.x via NodeSource..."
     
-    # Check if NodeSource repo already exists
     if [[ -f /etc/apt/sources.list.d/nodesource.list ]]; then
         log_verbose "NodeSource repository already configured"
     else
-        # Install NodeSource repository
         log_progress "Adding NodeSource repository..."
         
-        # Download and run NodeSource setup script
         local nodesource_script
         nodesource_script=$(mktemp)
         
@@ -457,7 +443,6 @@ install_nodejs() {
             rm -f "$nodesource_script"
             log_warning "NodeSource script download failed, trying alternative method..."
             
-            # Alternative: Install from Ubuntu repos (may be older)
             log_info "Installing nodejs from Ubuntu repositories..."
             if ! $SUDO_CMD apt-get install -y -qq nodejs npm; then
                 error_exit "Failed to install Node.js from repositories" 1
@@ -465,7 +450,6 @@ install_nodejs() {
             return 0
         fi
         
-        # Execute setup script
         if ! $SUDO_CMD bash "$nodesource_script"; then
             rm -f "$nodesource_script"
             error_exit "NodeSource setup script failed" 1
@@ -474,13 +458,11 @@ install_nodejs() {
         rm -f "$nodesource_script"
     fi
     
-    # Install nodejs package
     log_progress "Installing nodejs package..."
     if ! $SUDO_CMD apt-get install -y -qq nodejs; then
         error_exit "Failed to install nodejs package" 1
     fi
     
-    # Verify Node.js version
     local node_version
     node_version=$(node -v 2>/dev/null || echo "unknown")
     
@@ -497,7 +479,6 @@ install_nodejs() {
         log_warning "Installed Node.js version ($node_version) may be older than recommended (v18+)"
     fi
     
-    # Check npm
     if check_command "npm"; then
         local npm_version
         npm_version=$(npm -v 2>/dev/null || echo "unknown")
@@ -513,7 +494,6 @@ install_nodejs() {
 clone_repository() {
     log_progress "Cloning LavaPanel repository..."
     
-    # Create parent directory if needed
     local parent_dir
     parent_dir=$(dirname "$INSTALL_DIR")
     
@@ -522,11 +502,9 @@ clone_repository() {
         $SUDO_CMD mkdir -p "$parent_dir" || error_exit "Failed to create parent directory" 2
     fi
     
-    # Check if directory already exists
     if [[ -d "$INSTALL_DIR" ]]; then
         log_verbose "Installation directory exists: $INSTALL_DIR"
         
-        # Check if it's a git repository
         if [[ -d "$INSTALL_DIR/.git" ]]; then
             log_info "Updating existing LavaPanel installation..."
             cd "$INSTALL_DIR"
@@ -547,7 +525,6 @@ clone_repository() {
             error_exit "Please remove the directory or choose a different path" 2
         fi
     else
-        # Clone fresh repository
         log_info "Cloning to $INSTALL_DIR..."
         
         if ! $SUDO_CMD git clone --depth 1 https://github.com/IN3PIRE/LavaPanel.git "$INSTALL_DIR"; then
@@ -557,7 +534,6 @@ clone_repository() {
         log_success "Repository cloned successfully"
     fi
     
-    # Set ownership
     $SUDO_CMD chown -R "${SUDO_USER:-root}:${SUDO_USER:-root}" "$INSTALL_DIR" 2>/dev/null || true
 }
 
@@ -573,12 +549,10 @@ install_npm_dependencies() {
         log_verbose "node_modules found, will reinstall to ensure consistency"
     fi
     
-    # Check package.json exists
     if [[ ! -f "package.json" ]]; then
         error_exit "package.json not found - repository may be corrupted" 2
     fi
     
-    # Install dependencies using npm ci for production (faster, more reliable)
     log_info "Running npm ci (production install)..."
     if npm ci --legacy-peer-deps --loglevel=error; then
         log_success "Node.js dependencies installed successfully"
@@ -598,7 +572,6 @@ install_npm_dependencies() {
 #   Configuration Setup
 #-------------------------------------------------------------------------------
 generate_random_secret() {
-    # Generate a cryptographically secure random string
     openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p 2>/dev/null || cat /proc/sys/kernel/random/uuid | tr -d '-'
 }
 
@@ -607,13 +580,11 @@ setup_configuration() {
     
     cd "$INSTALL_DIR"
     
-    # Create .env from example if it doesn't exist
     if [[ ! -f ".env" ]]; then
         if [[ -f ".env.example" ]]; then
             log_verbose "Creating .env from .env.example"
             cp .env.example .env
         else
-            # Create minimal .env if example doesn't exist
             log_warning ".env.example not found, creating minimal .env"
             cat > .env << 'EOF'
 PORT=3000
@@ -631,7 +602,6 @@ EOF
         cp .env .env.backup."$(date +%Y%m%d_%H%M%S)"
     fi
     
-    # Generate secrets if they're still set to defaults or empty
     local current_jwt
     current_jwt=$(grep "^JWT_SECRET=" .env | cut -d'=' -f2-)
     local current_session
@@ -649,7 +619,6 @@ EOF
         sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$SESSION_SECRET|" .env
     fi
     
-    # Apply environment variable overrides
     if [[ -n "${PORT:-}" ]]; then
         sed -i "s|^PORT=.*|PORT=$PORT|" .env
         log_verbose "Set PORT=$PORT"
@@ -674,7 +643,6 @@ EOF
         log_verbose "Configured Telegram bot token (hidden)"
     fi
     
-    # Create data directory for SQLite database
     local data_dir
     data_dir=$(grep "^DATABASE_PATH=" .env | cut -d'=' -f2 | xargs dirname)
     if [[ -n "$data_dir" && "$data_dir" != "." ]]; then
@@ -698,7 +666,6 @@ setup_systemd_service() {
     
     log_progress "Setting up systemd service..."
     
-    # Create service file
     cat > "/tmp/${SERVICE_NAME}.service" << EOF
 [Unit]
 Description=LavaPanel Server Management Panel
@@ -718,7 +685,6 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=${SERVICE_NAME}
 
-# Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
 
@@ -726,7 +692,6 @@ PrivateTmp=true
 WantedBy=multi-user.target
 EOF
 
-    # Install service file
     if ! $SUDO_CMD cp "/tmp/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service"; then
         rm -f "/tmp/${SERVICE_NAME}.service"
         error_exit "Failed to install systemd service file" 3
@@ -734,28 +699,23 @@ EOF
     
     rm -f "/tmp/${SERVICE_NAME}.service"
     
-    # Reload systemd daemon
     log_verbose "Reloading systemd daemon..."
     if ! $SUDO_CMD systemctl daemon-reload; then
         error_exit "Failed to reload systemd daemon" 3
     fi
     
-    # Enable service
     log_verbose "Enabling ${SERVICE_NAME} service..."
     if ! $SUDO_CMD systemctl enable "${SERVICE_NAME}.service" 2>/dev/null; then
         log_warning "Failed to enable service (may already be enabled)"
     fi
     
-    # Start service
     log_verbose "Starting ${SERVICE_NAME} service..."
     if ! $SUDO_CMD systemctl start "${SERVICE_NAME}.service"; then
         error_exit "Failed to start ${SERVICE_NAME} service" 3
     fi
     
-    # Wait for service to stabilize
     sleep 2
     
-    # Check service status
     if $SUDO_CMD systemctl is-active --quiet "${SERVICE_NAME}.service"; then
         log_success "Systemd service ${SERVICE_NAME} started successfully"
         return 0
@@ -776,7 +736,6 @@ configure_firewall() {
     
     log_progress "Configuring firewall..."
     
-    # Check for UFW
     if command -v ufw &> /dev/null; then
         if ufw status &> /dev/null; then
             log_info "Opening port $FIREWALL_PORT in UFW..."
@@ -801,13 +760,11 @@ verify_installation() {
     
     local verification_passed=true
     
-    # Check installation directory
     if [[ ! -d "$INSTALL_DIR" ]]; then
         log_error "Installation directory not found: $INSTALL_DIR"
         verification_passed=false
     fi
     
-    # Check critical files
     local critical_files=("package.json" "server/index.js" ".env")
     for file in "${critical_files[@]}"; do
         if [[ ! -f "$INSTALL_DIR/$file" ]]; then
@@ -816,11 +773,10 @@ verify_installation() {
         fi
     done
     
-    # Check service status
     if [[ "$SKIP_SERVICE" != true ]]; then
         if command -v systemctl &> /dev/null; then
             if $SUDO_CMD systemctl is-active --quiet "${SERVICE_NAME}.service" 2>/dev/null; then
-                log_verbose "✓ Service is running"
+                log_verbose "Service is running"
             else
                 log_warning "Service is not running"
                 verification_passed=false
@@ -828,14 +784,13 @@ verify_installation() {
         fi
     fi
     
-    # Basic connectivity test (if service is running)
     if [[ "$SKIP_SERVICE" != true && "$verification_passed" == true ]]; then
-        sleep 3  # Give service time to start
+        sleep 3
         
         log_verbose "Testing connectivity on port $PORT..."
         if command -v curl &> /dev/null; then
             if curl -s --connect-timeout 5 "http://localhost:$PORT" > /dev/null 2>&1; then
-                log_verbose "✓ HTTP connectivity test passed"
+                log_verbose "HTTP connectivity test passed"
             else
                 log_warning "HTTP connectivity test failed (service may still be starting)"
             fi
@@ -856,68 +811,72 @@ verify_installation() {
 #-------------------------------------------------------------------------------
 display_summary() {
     echo ""
-    echo -e "${GREEN}${BOLD}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}${BOLD}=================================================================${NC}"
     echo -e "${GREEN}  LAVAPANEL INSTALLATION COMPLETED SUCCESSFULLY${NC}"
-    echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}=================================================================${NC}"
     echo ""
     echo -e "${BOLD}Installation Details:${NC}"
-    echo "  • Version: ${SCRIPT_VERSION}"
-    echo "  • Install Path: ${INSTALL_DIR}"
-    echo "  • Port: ${PORT}"
-    echo "  • Service: ${SERVICE_NAME}"
+    echo "  - Version: ${SCRIPT_VERSION}"
+    echo "  - Install Path: ${INSTALL_DIR}"
+    echo "  - Port: ${PORT}"
+    echo "  - Service: ${SERVICE_NAME}"
     echo ""
     
     if [[ "$SKIP_SERVICE" != true ]]; then
         echo -e "${BOLD}Service Status:${NC}"
         if command -v systemctl &> /dev/null; then
             if $SUDO_CMD systemctl is-active --quiet "${SERVICE_NAME}.service" 2>/dev/null; then
-                echo "  • Status: ${GREEN}Running${NC}"
+                echo "  - Status: ${GREEN}Running${NC}"
             else
-                echo "  • Status: ${YELLOW}Not running${NC}"
-                echo "  • Start with: sudo systemctl start ${SERVICE_NAME}"
+                echo "  - Status: ${YELLOW}Not running${NC}"
+                echo "  - Start with: sudo systemctl start ${SERVICE_NAME}"
             fi
         else
-            echo "  • Systemd not available"
+            echo "  - Systemd not available"
         fi
         echo ""
     fi
     
     echo -e "${BOLD}Access Information:${NC}"
-    echo "  • Local URL: http://localhost:${PORT}"
-    echo "  • Server URL: http://$(hostname -I | awk '{print $1}'):${PORT}"
+    echo "  - Local URL: http://localhost:${PORT}"
+    if command -v hostname &> /dev/null; then
+        echo "  - Server URL: http://$(hostname -I | awk '{print $1}'):${PORT}"
+    fi
     echo ""
     
     if [[ -n "${DISCORD_CLIENT_ID:-}" ]]; then
         echo -e "${BOLD}Discord Integration:${NC}"
-        echo "  • Client ID: Configured"
-        echo "  • Callback: http://$(hostname -I | awk '{print $1}'):${PORT}/api/auth/discord/callback"
+        echo "  - Client ID: Configured"
+        if command -v hostname &> /dev/null; then
+            echo "  - Callback: http://$(hostname -I | awk '{print $1}'):${PORT}/api/auth/discord/callback"
+        fi
         echo ""
     fi
     
     if [[ ${#WARNINGS[@]} -gt 0 ]]; then
         echo -e "${YELLOW}${BOLD}Warnings (${#WARNINGS[@]}):${NC}"
         for warning in "${WARNINGS[@]}"; do
-            echo "  • ${warning#*] - }"
+            echo "  - ${warning#*] - }"
         done
         echo ""
     fi
     
     echo -e "${BOLD}Useful Commands:${NC}"
     if [[ "$SKIP_SERVICE" != true ]]; then
-        echo "  • Check status:   sudo systemctl status ${SERVICE_NAME}"
-        echo "  • Start:          sudo systemctl start ${SERVICE_NAME}"
-        echo "  • Stop:           sudo systemctl stop ${SERVICE_NAME}"
-        echo "  • Restart:        sudo systemctl restart ${SERVICE_NAME}"
-        echo "  • View logs:      sudo journalctl -u ${SERVICE_NAME} -f"
+        echo "  - Check status:   sudo systemctl status ${SERVICE_NAME}"
+        echo "  - Start:          sudo systemctl start ${SERVICE_NAME}"
+        echo "  - Stop:           sudo systemctl stop ${SERVICE_NAME}"
+        echo "  - Restart:        sudo systemctl restart ${SERVICE_NAME}"
+        echo "  - View logs:      sudo journalctl -u ${SERVICE_NAME} -f"
     else
-        echo "  • Start manually: cd ${INSTALL_DIR} && npm start"
-        echo "  • View logs:      cd ${INSTALL_DIR} && npm start"
+        echo "  - Start manually: cd ${INSTALL_DIR} && npm start"
+        echo "  - View logs:      cd ${INSTALL_DIR} && npm start"
     fi
-    echo "  • Uninstall:      sudo rm -rf ${INSTALL_DIR} /etc/systemd/system/${SERVICE_NAME}.service"
+    echo "  - Uninstall:      sudo rm -rf ${INSTALL_DIR} /etc/systemd/system/${SERVICE_NAME}.service"
     echo ""
     
     echo -e "${BOLD}Log File:${NC}"
-    echo "  • ${LOG_FILE}"
+    echo "  - ${LOG_FILE}"
     echo ""
     
     if [[ "$SKIP_SERVICE" != true ]]; then
@@ -940,45 +899,34 @@ display_summary() {
 main() {
     echo ""
     echo -e "${CYAN}${BOLD}LavaPanel Production Installer v${SCRIPT_VERSION}${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}================================================================${NC}"
     echo ""
     
-    # Initialize logging
     touch "$LOG_FILE" 2>/dev/null || log_warning "Cannot write to log file: $LOG_FILE"
     log_info "Installation started"
     log_info "Command: $*"
     
-    # Parse command-line arguments
     parse_arguments "$@"
     
-    # Run pre-flight checks
     check_root
     detect_os
     
-    # Check and install dependencies
     if ! check_dependencies; then
         install_dependencies
     fi
     
-    # Clone/update repository
     clone_repository
     
-    # Install NPM dependencies
     install_npm_dependencies
     
-    # Configure application
     setup_configuration
     
-    # Setup systemd service
     setup_systemd_service
     
-    # Configure firewall if requested
     configure_firewall
     
-    # Verify installation
     verify_installation
     
-    # Display success summary
     display_summary
     
     log_info "Installation completed successfully"
