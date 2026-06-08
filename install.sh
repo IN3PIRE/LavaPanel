@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "LavaPanel Installer v2.0.4"
-echo "=========================="
+echo "================================"
+echo "  LavaPanel Installer v2.0.5"
+echo "================================"
 echo ""
 
 INSTALL_DIR="/opt/LavaPanel"
@@ -11,10 +12,12 @@ PORT=3000
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
 log_step() { echo -e "${BLUE}[...] $1${NC}"; }
 log_ok() { echo -e "${GREEN}[OK] $1${NC}"; }
+log_warn() { echo -e "${YELLOW}[WARN] $1${NC}"; }
 log_err() { echo -e "${RED}[ERROR] $1${NC}" >&2; }
 
 # Check root
@@ -47,47 +50,22 @@ if [[ -f /etc/os-release ]]; then
     esac
 fi
 
-# Update apt
+# CRITICAL: Update apt FIRST before any package checks
 log_step "Updating package lists..."
-$SUDO apt-get update -qq
+$SUDO apt-get update
 
-# Install Node.js and npm if missing
-log_step "Checking Node.js..."
-if command -v node &>/dev/null; then
-    NODE_VER=$(node -v | cut -d'.' -f1 | tr -d 'v')
-    if [[ "$NODE_VER" -ge 18 ]]; then
-        log_ok "Node.js $(node -v) already installed"
-        if ! command -v npm &>/dev/null; then
-            log_step "Installing npm..."
-            $SUDO apt-get install -y -qq npm
-            log_ok "npm installed"
-        fi
-    else
-        log_step "Upgrading Node.js to v18..."
-        $SUDO apt-get install -y -qq nodejs npm
-        log_ok "Node.js $(node -v) installed"
-    fi
+# FORCE install Node.js and npm - don't check, just install
+log_step "Installing Node.js and npm..."
+$SUDO apt-get install -y nodejs npm curl git openssl
+
+# Verify versions
+if command -v node &>/dev/null && command -v npm &>/dev/null; then
+    log_ok "Node.js $(node -v) installed"
+    log_ok "npm $(npm -v) installed"
 else
-    log_step "Installing Node.js 18 and npm..."
-    $SUDO apt-get install -y -qq nodejs npm
-    log_ok "Node.js $(node -v) and npm installed"
+    log_err "Failed to install Node.js or npm"
+    exit 1
 fi
-
-# Install git if missing
-if ! command -v git &>/dev/null; then
-    log_step "Installing git..."
-    $SUDO apt-get install -y -qq git
-    log_ok "git installed"
-fi
-
-# Install other tools if missing
-for pkg in curl openssl xxd; do
-    if ! command -v "$pkg" &>/dev/null; then
-        log_step "Installing $pkg..."
-        $SUDO apt-get install -y -qq "$pkg"
-        log_ok "$pkg installed"
-    fi
-done
 
 # Clone repo
 log_step "Cloning LavaPanel..."
@@ -107,7 +85,7 @@ else
 fi
 
 # Install npm deps
-log_step "Installing npm dependencies..."
+log_step "Installing npm dependencies (this may take a minute)..."
 cd "$INSTALL_DIR"
 if npm ci --legacy-peer-deps 2>/dev/null; then
     log_ok "Dependencies installed (npm ci)"
@@ -164,7 +142,7 @@ fi
 log_ok "Configuration complete"
 
 # Setup systemd
-log_step "Setting up service..."
+log_step "Setting up systemd service..."
 cat > /tmp/lavapanel.service << 'EOF'
 [Unit]
 Description=LavaPanel Server
@@ -192,7 +170,7 @@ sleep 2
 if $SUDO systemctl is-active --quiet lavapanel; then
     log_ok "Service running"
 else
-    echo -e "${BLUE}[INFO] Service starting (check: systemctl status lavapanel)${NC}"
+    log_warn "Service starting (check: systemctl status lavapanel)"
 fi
 
 # Summary
