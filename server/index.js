@@ -77,6 +77,7 @@ const autoUpdater = require('./utils/auto-update');
 autoUpdater.start();
 
 db.initialize()
+  .then(() => db.runMigrations())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`🔥 LavaPanel server running on http://localhost:${PORT}`);
