@@ -9,6 +9,15 @@ const validToken = jwt.sign({ userId: 1 }, process.env.JWT_SECRET, { expiresIn: 
 const mockDb = { getDB: jest.fn() };
 jest.mock('../../server/database', () => mockDb);
 
+// Mock WebSocket to avoid side effects
+jest.mock('../../server/websocket', () => ({
+  broadcastServerStatus: jest.fn(),
+  sendServerLog: jest.fn(),
+  sendToUser: jest.fn(),
+  sendToServer: jest.fn(),
+  broadcastStats: jest.fn()
+}));
+
 // Mock child_process spawn
 jest.mock('child_process', () => ({
   spawn: jest.fn(() => ({
@@ -153,6 +162,9 @@ describe('Server Routes', () => {
       mockDbInstance.get.mockImplementation((sql, params, cb) => {
         cb(null, { id: 1, user_id: 1, name: 'Bot', type: 'discord', config: '{}', path: '/tmp/srv' });
       });
+      mockDbInstance.run.mockImplementation((sql, params, cb) => {
+        if (typeof cb === 'function') cb(null);
+      });
 
       const res = await request(app)
         .post('/api/servers/1/start')
@@ -195,9 +207,8 @@ describe('Server Routes', () => {
 
   describe('DELETE /api/servers/:id', () => {
     test('returns 404 for non-existent server', async () => {
-      mockDbInstance.run.mockImplementation((sql, params, cb) => {
-        cb.call({ changes: 0 }, null);
-      });
+      // Route now calls get() first to fetch server before delete
+      mockDbInstance.get.mockImplementation((sql, params, cb) => cb(null, null));
 
       const res = await request(app)
         .delete('/api/servers/999')
@@ -208,8 +219,12 @@ describe('Server Routes', () => {
     });
 
     test('returns 200 on successful deletion', async () => {
+      // Route calls get() first to fetch the server record
+      mockDbInstance.get.mockImplementation((sql, params, cb) => {
+        cb(null, { id: 1, user_id: 1, name: 'Bot', type: 'discord', config: '{}' });
+      });
       mockDbInstance.run.mockImplementation((sql, params, cb) => {
-        cb.call({ changes: 1 }, null);
+        if (typeof cb === 'function') cb(null);
       });
 
       const res = await request(app)

@@ -230,6 +230,97 @@
             window.location.href = '/login.html';
         }
 
+        // WebSocket connection for real-time updates
+        let ws = null;
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}?token=${token}`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    console.log('🌋 WebSocket connected');
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        handleWebSocketMessage(msg);
+                    } catch (e) {
+                        console.error('WebSocket message error:', e);
+                    }
+                };
+                
+                ws.onclose = () => {
+                    console.log('WebSocket disconnected, reconnecting in 5s...');
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                ws.onerror = (err) => {
+                    console.error('WebSocket error:', err);
+                };
+            } catch (e) {
+                console.log('WebSocket not available, using polling mode');
+            }
+        }
+
+        function handleWebSocketMessage(msg) {
+            switch (msg.type) {
+                case 'server:status':
+                    // Update individual server status badge
+                    const badge = document.querySelector(`.server-item [data-server-id="${msg.serverId}"] .status-badge`);
+                    if (badge) {
+                        badge.textContent = msg.status;
+                        badge.className = `status-badge ${msg.status === 'running' ? 'status-running' : 'status-stopped'}`;
+                    }
+                    // Refresh counts
+                    loadStats();
+                    break;
+                case 'server:deleted':
+                    // Remove server card from DOM
+                    const serverItem = document.querySelector(`.server-item[data-server-id="${msg.serverId}"]`);
+                    if (serverItem) serverItem.remove();
+                    loadStats();
+                    break;
+                case 'server:log':
+                    // Could show in a log viewer modal
+                    console.log(`[${msg.serverId}]`, msg.line);
+                    break;
+                case 'stats:update':
+                    if (msg.totalServers !== undefined) document.getElementById('totalServers').textContent = msg.totalServers;
+                    if (msg.runningServers !== undefined) document.getElementById('runningServers').textContent = msg.runningServers;
+                    if (msg.coins !== undefined) document.getElementById('userCoins').textContent = msg.coins;
+                    break;
+                case 'welcome':
+                    console.log('🌋', msg.message);
+                    break;
+                case 'error':
+                    console.error('WebSocket error:', msg.message);
+                    break;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const [serversRes, coinsRes] = await Promise.all([
+                    fetch('/api/servers', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch('/api/users/coins', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                ]);
+                const servers = await serversRes.json();
+                const coins = await coinsRes.json();
+                document.getElementById('totalServers').textContent = servers.length;
+                document.getElementById('runningServers').textContent = servers.filter(s => s.status === 'running').length;
+                document.getElementById('userCoins').textContent = coins.coins || 0;
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
         async function loadDashboard() {
             try {
                 const [serversRes, coinsRes, themeRes] = await Promise.all([
@@ -259,7 +350,7 @@
                     serverList.innerHTML = '<p style="color: #ff9f6b; text-align: center;">No servers yet. Deploy your first server!</p>';
                 } else {
                     serverList.innerHTML = servers.map(server => `
-                        <div class="server-item">
+                        <div class="server-item" data-server-id="${server.id}">
                             <div class="server-info">
                                 <h4>${server.name}</h4>
                                 <p>${server.type} • Port: ${server.port || 'N/A'}</p>
@@ -283,27 +374,42 @@
         }
 
         async function startServer(id) {
-            await fetch(`/api/servers/${id}/start`, {
+            const res = await fetch(`/api/servers/${id}/start`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (!res.ok) {
+                const err = await res.json();
+                alert('Failed to start server: ' + (err.error || 'Unknown error'));
+                return;
+            }
             loadDashboard();
         }
 
         async function stopServer(id) {
-            await fetch(`/api/servers/${id}/stop`, {
+            const res = await fetch(`/api/servers/${id}/stop`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (!res.ok) {
+                const err = await res.json();
+                alert('Failed to stop server: ' + (err.error || 'Unknown error'));
+                return;
+            }
             loadDashboard();
         }
 
         async function deleteServer(id) {
             if (!confirm('Are you sure you want to delete this server?')) return;
-            await fetch(`/api/servers/${id}`, {
+            const res = await fetch(`/api/servers/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (!res.ok) {
+                const err = await res.json();
+                alert('Failed to delete server: ' + (err.error || 'Unknown error'));
+                return;
+            }
             loadDashboard();
         }
 
@@ -313,7 +419,9 @@
             window.location.href = '/login.html';
         });
 
+        // Initialize
         loadDashboard();
+        connectWebSocket();
     </script>
 </body>
 </html>
