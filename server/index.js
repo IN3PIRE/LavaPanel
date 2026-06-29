@@ -70,6 +70,9 @@ app.get('/deploy/minecraft', (req, res) => {
 const { startDiscordBot } = require('./integrations/discord');
 const { startTelegramBot } = require('./integrations/telegram');
 
+// WebSocket for real-time updates
+const lavaWs = require('./websocket');
+
 startDiscordBot();
 startTelegramBot();
 
@@ -77,11 +80,15 @@ const autoUpdater = require('./utils/auto-update');
 autoUpdater.start();
 
 db.initialize()
+  .then(() => db.runMigrations())
   .then(() => {
-    app.listen(PORT, () => {
+    // Create HTTP server and attach WebSocket
+    const server = app.listen(PORT, () => {
       console.log(`🔥 LavaPanel server running on http://localhost:${PORT}`);
       console.log(`🌋 Environment: ${process.env.NODE_ENV}`);
     });
+    lavaWs.initialize(server);
+    console.log('🌋 WebSocket server attached');
   })
   .catch(err => {
     console.error('Failed to initialize database:', err);

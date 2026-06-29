@@ -5,6 +5,7 @@ const db = require('../database');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const lavaWs = require('../websocket');
 
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -91,6 +92,36 @@ router.post('/:id/start', authMiddleware, (req, res) => {
         ['running', serverId]
       );
 
+      // Broadcast status update via WebSocket
+      lavaWs.broadcastServerStatus(req.userId, serverId, 'running');
+
+      // Stream server output via WebSocket
+      if (serverProcess.stdout) {
+        serverProcess.stdout.on('data', (data) => {
+          const lines = data.toString().split('\n').filter(l => l);
+          lines.forEach(line => {
+            lavaWs.sendServerLog(req.userId, serverId, line);
+          });
+        });
+      }
+
+      if (serverProcess.stderr) {
+        serverProcess.stderr.on('data', (data) => {
+          const lines = data.toString().split('\n').filter(l => l);
+          lines.forEach(line => {
+            lavaWs.sendServerLog(req.userId, serverId, `[ERR] ${line}`);
+          });
+        });
+      }
+
+      serverProcess.on('exit', (code) => {
+        db.getDB().run(
+          'UPDATE servers SET status = ? WHERE id = ?',
+          ['stopped', serverId]
+        );
+        lavaWs.broadcastServerStatus(req.userId, serverId, 'stopped');
+      });
+
       res.json({ message: 'Server started', pid: serverProcess.pid });
     }
   );
@@ -111,6 +142,9 @@ router.post('/:id/stop', authMiddleware, (req, res) => {
         ['stopped', serverId]
       );
 
+      // Broadcast status update via WebSocket
+      lavaWs.broadcastServerStatus(req.userId, serverId, 'stopped');
+
       res.json({ message: 'Server stopped' });
     }
   );
@@ -119,14 +153,30 @@ router.post('/:id/stop', authMiddleware, (req, res) => {
 router.delete('/:id', authMiddleware, (req, res) => {
   const serverId = req.params.id;
   
-  db.getDB().run(
-    'DELETE FROM servers WHERE id = ? AND user_id = ?',
+  db.getDB().get(
+    'SELECT * FROM servers WHERE id = ? AND user_id = ?',
     [serverId, req.userId],
-    function(err) {
+    (err, server) => {
       if (err) return res.status(500).json({ error: 'Database error' });
-      if (this.changes === 0) return res.status(404).json({ error: 'Server not found' });
-      
-      res.json({ message: 'Server deleted successfully' });
+      if (!server) return res.status(404).json({ error: 'Server not found' });
+
+      db.getDB().run(
+        'DELETE FROM servers WHERE id = ? AND user_id = ?',
+        [serverId, req.userId],
+        function(err) {
+          if (err) return res.status(500).json({ error: 'Database error' });
+          
+          // Broadcast server deletion via WebSocket
+          lavaWs.sendToUser(req.userId, {
+            type: 'server:deleted',
+            serverId,
+            serverName: server.name,
+            timestamp: new Date().toISOString()
+          });
+          
+          res.json({ message: 'Server deleted successfully' });
+        }
+      );
     }
   );
 });
