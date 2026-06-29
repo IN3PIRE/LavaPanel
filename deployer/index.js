@@ -66,6 +66,7 @@ client.login(process.env.BOT_TOKEN);
       name,
       type: 'discord',
       status: 'stopped',
+      userId,
       path: serverPath,
       config
     });
@@ -107,6 +108,7 @@ java -Xmx${config.ram || '2G'} -jar server.jar nogui
       name,
       type: 'minecraft',
       status: 'stopped',
+      userId,
       path: serverPath,
       config
     });

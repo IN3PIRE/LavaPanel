@@ -355,19 +355,46 @@
                 seed: formData.get('seed') || ''
             };
 
-            // Simulate deployment
+            const token = localStorage.getItem('lava_token');
+            if (!token) {
+                alert('Please log in first.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Real deployment
             const submitBtn = this.querySelector('.submit-btn');
             submitBtn.textContent = '⏳ Deploying...';
             submitBtn.disabled = true;
 
-            setTimeout(() => {
-                alert('🔥 Minecraft server deployment initiated! Check your dashboard for status.');
-                submitBtn.textContent = '✅ Deployed!';
-                setTimeout(() => {
+            fetch('/api/servers/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: config.serverName || ('minecraft-' + Date.now()),
+                    type: 'minecraft',
+                    config
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
                     submitBtn.textContent = '🚀 Deploy Server';
                     submitBtn.disabled = false;
-                }, 2000);
-            }, 2000);
+                } else {
+                    alert('🔥 Minecraft server deployed! Check your dashboard.');
+                    window.location.href = 'dashboard.html';
+                }
+            })
+            .catch(err => {
+                alert('Connection error. Please try again.');
+                submitBtn.textContent = '🚀 Deploy Server';
+                submitBtn.disabled = false;
+            });
         });
     </script>
 </body>

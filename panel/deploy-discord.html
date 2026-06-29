@@ -430,8 +430,15 @@
         }
 
         // Form submission
-        document.getElementById('configForm').addEventListener('submit', function(e) {
+        document.getElementById('configForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            const token = localStorage.getItem('lava_token');
+            if (!token) {
+                alert('Please log in first.');
+                window.location.href = 'login.html';
+                return;
+            }
             
             const config = {
                 nodeVersion: document.getElementById('nodeVersion').value,
@@ -443,10 +450,36 @@
             btn.textContent = '⏳ Deploying...';
             btn.disabled = true;
 
-            setTimeout(() => {
-                alert(`✅ Server Deployed!\n\nNode.js: v${config.nodeVersion}.x\nStartup: ${config.mainFile}\nFiles: ${uploadedFiles.length}`);
-                btn.textContent = '✅ Deployed';
-            }, 2000);
+            try {
+                const res = await fetch('/api/servers/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: `discord-bot-${Date.now()}`,
+                        type: 'discord',
+                        config
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert(data.error || 'Deployment failed');
+                    btn.textContent = '🚀 Deploy Server';
+                    btn.disabled = false;
+                    return;
+                }
+
+                alert(`✅ Discord bot deployed successfully!\nServer ID: ${data.serverId}`);
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                alert('Connection error. Please try again.');
+                btn.textContent = '🚀 Deploy Server';
+                btn.disabled = false;
+            }
         });
     </script>
 </body>

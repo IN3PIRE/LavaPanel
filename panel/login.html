@@ -297,10 +297,49 @@
         setInterval(createParticle, 200);
 
         // Form submission
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            // TODO: Implement login logic
-            alert('Login functionality coming soon!');
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = this.querySelector('.btn-login');
+            
+            btn.textContent = 'Logging in...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert(data.error || 'Login failed');
+                    btn.textContent = 'Log In';
+                    btn.disabled = false;
+                    return;
+                }
+
+                localStorage.setItem('lava_token', data.token);
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                alert('Connection error. Please try again.');
+                btn.textContent = 'Log In';
+                btn.disabled = false;
+            }
+        });
+
+        // Discord OAuth
+        document.querySelector('.social-icons .social-icon:first-child').addEventListener('click', function() {
+            window.location.href = '/api/auth/discord';
+        });
+
+        // Telegram OAuth placeholder
+        document.querySelector('.social-icons .social-icon:last-child').addEventListener('click', function() {
+            alert('Telegram login coming soon!');
         });
     </script>
 </body>
