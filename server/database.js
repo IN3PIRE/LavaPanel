@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '..', 'data', 'lavapanel.db');
 
@@ -138,7 +139,43 @@ function runMigrations() {
       `, (err) => {
         if (err) return reject(err);
         console.log('✅ Database migrations complete');
-        resolve();
+        // Seed default admin after migrations
+        seedDefaultAdmin()
+          .then(() => resolve())
+          .catch((seedErr) => {
+            console.warn('⚠️ Admin seed skipped (non-fatal):', seedErr.message);
+            resolve();
+          });
+      });
+    });
+  });
+}
+
+function seedDefaultAdmin() {
+  return new Promise((resolve, reject) => {
+    // Only seed if no admin exists
+    db.get('SELECT COUNT(*) as count FROM users WHERE role = ?', ['admin'], (err, row) => {
+      if (err) return reject(err);
+      if (row.count > 0) {
+        console.log('👤 Admin user already exists, skipping seed');
+        return resolve();
+      }
+
+      const username = 'admin';
+      const email = 'admin@lavapanel.local';
+      const password = 'admin123';
+
+      bcrypt.hash(password, 10, (err, hash) => {
+        if (err) return reject(err);
+        db.run(
+          'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
+          [username, email, hash, 'admin'],
+          function(err) {
+            if (err) return reject(err);
+            console.log('👤 Default admin created — login: admin / admin123');
+            resolve();
+          }
+        );
       });
     });
   });
@@ -167,5 +204,6 @@ module.exports = {
   getDb,
   close,
   encrypt,
-  decrypt
+  decrypt,
+  seedDefaultAdmin
 };
